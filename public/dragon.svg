@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Original DragonSim mark, inspired by Team 422 Mech Tech Dragons angular green dragon attachment.
+       Independent, unofficial. Not affiliated with FIRST. -->
+  <rect width="64" height="64" rx="12" fill="#0B1F16"/>
+  <path d="M10 46 L20 30 L16 22 L26 26 L30 12 L36 24 L48 20 L42 30 L54 38 L40 40 L44 54 L32 44 L22 52 L24 42 Z"
+        fill="none" stroke="#2BD96A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="30" cy="30" r="2.6" fill="#D9A441"/>
+  <path d="M36 24 L32 32 L40 34" fill="none" stroke="#2BD96A" stroke-width="2" stroke-linecap="round"/>
+</svg>

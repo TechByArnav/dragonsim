@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "scope": "single-team (Team 422 Mech Tech Dragons). No multi-team scouting in v1.",
+    "disclaimer": "All defaults are baseline engineering estimates, NOT team facts. Every parameter editable with source/confidence."
+  },
+  "archetypes": [
+    {
+      "id": "sprinter", "name": "Sprinter Intake Shooter",
+      "desc": "Fast swerve cycle robot. Efficient floor intake, moderate/high storage, high close/mid-range rate. Limited climb.",
+      "drivetrain": "swerve", "footprintIn": { "x": 28, "y": 28 }, "clearanceIn": 3.5, "massLb": 112,
+      "vmaxInPerSec": 165, "amaxInPerSec2": 130, "brakeInPerSec2": 150, "omegaDegPerSec": 360, "turnAccelDegPerSec2": 720,
+      "maneuver": 0.9, "batteryDerate": 0.94, "traction": 1.0,
+      "intakeRatePerSec": 2.2, "intakeFail": 0.08, "storage": 18, "indexRatePerSec": 3.0,
+      "releaseRatePerSec": 2.4, "spinUpSec": 0.5,
+      "accuracy": { "close": 0.92, "mid": 0.82, "long": 0.55 },
+      "jamProb": 0.02, "cycleReliability": 0.94,
+      "climb": { "levels": [1], "setupSec": 8, "pSuccess": 0.7 },
+      "mechRisk": 0.25, "driverMod": 1.0, "autoCompat": ["preload-score", "central-collect", "safe-retreat"],
+      "confidence": "baseline-estimate", "source": "dragonsim-baseline"
+    },
+    {
+      "id": "allrounder", "name": "Balanced All-Rounder (Shenron default)",
+      "desc": "Team 422 placeholder all-rounder. Moderate speed, reliable intake/score, L2 climb target. Robust vs congestion. TUNE with Shenron measurements.",
+      "drivetrain": "swerve", "footprintIn": { "x": 29, "y": 29 }, "clearanceIn": 3.0, "massLb": 114,
+      "vmaxInPerSec": 145, "amaxInPerSec2": 110, "brakeInPerSec2": 130, "omegaDegPerSec": 320, "turnAccelDegPerSec2": 640,
+      "maneuver": 0.8, "batteryDerate": 0.93, "traction": 1.0,
+      "intakeRatePerSec": 1.8, "intakeFail": 0.06, "storage": 14, "indexRatePerSec": 2.5,
+      "releaseRatePerSec": 2.0, "spinUpSec": 0.6,
+      "accuracy": { "close": 0.9, "mid": 0.8, "long": 0.5 },
+      "jamProb": 0.015, "cycleReliability": 0.95,
+      "climb": { "levels": [1, 2], "setupSec": 10, "pSuccess": 0.85 },
+      "mechRisk": 0.2, "driverMod": 1.0, "autoCompat": ["preload-score", "safe-retreat", "multi-collect"],
+      "confidence": "user-entered-placeholder", "source": "team422-shenron-placeholder"
+    },
+    {
+      "id": "hauler", "name": "High-Capacity Cycler",
+      "desc": "Large storage + throughput, longer load/unload, needs clear paths, harder recovery.",
+      "drivetrain": "swerve", "footprintIn": { "x": 32, "y": 30 }, "clearanceIn": 3.0, "massLb": 115,
+      "vmaxInPerSec": 135, "amaxInPerSec2": 95, "brakeInPerSec2": 110, "omegaDegPerSec": 280, "turnAccelDegPerSec2": 560,
+      "maneuver": 0.65, "batteryDerate": 0.92, "traction": 1.0,
+      "intakeRatePerSec": 2.0, "intakeFail": 0.07, "storage": 28, "indexRatePerSec": 2.0,
+      "releaseRatePerSec": 1.6, "spinUpSec": 0.8,
+      "accuracy": { "close": 0.9, "mid": 0.78, "long": 0.45 },
+      "jamProb": 0.03, "cycleReliability": 0.9,
+      "climb": { "levels": [1], "setupSec": 12, "pSuccess": 0.6 },
+      "mechRisk": 0.35, "driverMod": 1.0, "autoCompat": ["preload-score", "central-collect"],
+      "confidence": "baseline-estimate", "source": "dragonsim-baseline"
+    },
+    {
+      "id": "sniper", "name": "Precision Long-Range Shooter",
+      "desc": "Scores from shooting zones; needs aim calibration; sensitive to defense/misses; sacrifices storage/climb.",
+      "drivetrain": "swerve", "footprintIn": { "x": 28, "y": 28 }, "clearanceIn": 3.5, "massLb": 110,
+      "vmaxInPerSec": 140, "amaxInPerSec2": 105, "brakeInPerSec2": 125, "omegaDegPerSec": 300, "turnAccelDegPerSec2": 600,
+      "maneuver": 0.75, "batteryDerate": 0.93, "traction": 1.0,
+      "intakeRatePerSec": 1.4, "intakeFail": 0.08, "storage": 10, "indexRatePerSec": 2.2,
+      "releaseRatePerSec": 1.8, "spinUpSec": 1.1,
+      "accuracy": { "close": 0.93, "mid": 0.86, "long": 0.74 },
+      "jamProb": 0.02, "cycleReliability": 0.9,
+      "climb": { "levels": [], "setupSec": 0, "pSuccess": 0 },
+      "mechRisk": 0.3, "driverMod": 1.0, "autoCompat": ["preload-score"],
+      "confidence": "baseline-estimate", "source": "dragonsim-baseline"
+    },
+    {
+      "id": "warden", "name": "Defender / Traffic Controller",
+      "desc": "Strong accel/traction/positioning; low direct throughput; models lane denial. Rules-legal defense only — speculative impact separated.",
+      "drivetrain": "swerve", "footprintIn": { "x": 30, "y": 30 }, "clearanceIn": 2.75, "massLb": 115,
+      "vmaxInPerSec": 150, "amaxInPerSec2": 135, "brakeInPerSec2": 150, "omegaDegPerSec": 340, "turnAccelDegPerSec2": 680,
+      "maneuver": 0.85, "batteryDerate": 0.94, "traction": 1.15,
+      "intakeRatePerSec": 0.8, "intakeFail": 0.12, "storage": 6, "indexRatePerSec": 1.5,
+      "releaseRatePerSec": 1.0, "spinUpSec": 0.7,
+      "accuracy": { "close": 0.8, "mid": 0.6, "long": 0.35 },
+      "jamProb": 0.02, "cycleReliability": 0.92,
+      "climb": { "levels": [1], "setupSec": 9, "pSuccess": 0.75 },
+      "mechRisk": 0.25, "driverMod": 1.0, "autoCompat": ["safe-retreat"],
+      "confidence": "baseline-estimate", "source": "dragonsim-baseline",
+      "defenseNote": "Disruption modeled as opponent cycle penalty slider, NOT as guaranteed stops. Keep rules-legal."
+    },
+    {
+      "id": "climber", "name": "Climb Specialist",
+      "desc": "Reliable high endgame climb; reduced throughput (weight/packaging); early departure + climb p(success).",
+      "drivetrain": "swerve", "footprintIn": { "x": 29, "y": 29 }, "clearanceIn": 3.0, "massLb": 115,
+      "vmaxInPerSec": 138, "amaxInPerSec2": 100, "brakeInPerSec2": 120, "omegaDegPerSec": 300, "turnAccelDegPerSec2": 600,
+      "maneuver": 0.72, "batteryDerate": 0.93, "traction": 1.0,
+      "intakeRatePerSec": 1.5, "intakeFail": 0.07, "storage": 12, "indexRatePerSec": 2.2,
+      "releaseRatePerSec": 1.7, "spinUpSec": 0.6,
+      "accuracy": { "close": 0.88, "mid": 0.78, "long": 0.48 },
+      "jamProb": 0.015, "cycleReliability": 0.93,
+      "climb": { "levels": [1, 2, 3], "setupSec": 7, "pSuccess": 0.93 },
+      "mechRisk": 0.22, "driverMod": 1.0, "autoCompat": ["preload-score", "early-climb"],
+      "confidence": "baseline-estimate", "source": "dragonsim-baseline"
+    }
+  ]
+}

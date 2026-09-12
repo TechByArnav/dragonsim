@@ -1,0 +1,29 @@
+# DragonSim — do not commit private / large / generated artifacts
+node_modules/
+dist/
+dist-electron/
+*.log
+
+# Team context binaries (videos, PDFs, STEP, images) stay local
+Context/
+*.mp4
+*.step
+*.STEP
+*.pdf
+!data/**/*.json
+
+# Local scenario + export outputs (samples are committed, user runs are not)
+data/scenarios/user-*.json
+data/exports/*.{json,csv}
+!data/exports/.gitkeep
+data/context/catalog.local.json
+
+# App persistence / OS
+.DS_Store
+Thumbs.db
+*.local
+.env
+.env.local
+
+# Electron packaging caches
+.cache/

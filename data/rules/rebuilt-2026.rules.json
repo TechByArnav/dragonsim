@@ -1,0 +1,67 @@
+{
+  "meta": { "id": "rebuilt-2026", "version": "1.0.0", "manualVersion": "TU22", "units": "inch", "source": "2026GameManual TU22 Sections 6-8" },
+  "match": {
+    "autoSec": 20,
+    "teleopSec": 140,
+    "settleSec": 3,
+    "segments": [
+      { "id": "AUTO", "label": "Autonomous", "start": "A0:20", "durSec": 20, "hubs": "both-active" },
+      { "id": "TRANSITION", "label": "Transition Shift", "timer": "2:20-2:10", "durSec": 10, "hubs": "both-active" },
+      { "id": "SHIFT1", "label": "Shift 1", "timer": "2:10-1:45", "durSec": 25, "hubs": "alternating" },
+      { "id": "SHIFT2", "label": "Shift 2", "timer": "1:45-1:20", "durSec": 25, "hubs": "alternating" },
+      { "id": "SHIFT3", "label": "Shift 3", "timer": "1:20-0:55", "durSec": 25, "hubs": "alternating" },
+      { "id": "SHIFT4", "label": "Shift 4", "timer": "0:55-0:30", "durSec": 25, "hubs": "alternating" },
+      { "id": "ENDGAME", "label": "End Game", "timer": "0:30-0:00", "durSec": 30, "hubs": "both-active" }
+    ],
+    "hubArbitration": "AUTO FUEL winner's HUB inactive in SHIFT1, then alternates each SHIFT. Tie broken randomly by FMS. +3s processing tail after each deactivation.",
+    "hubTable": {
+      "redWinsAuto": { "SHIFT1": { "red": "inactive", "blue": "active" }, "SHIFT2": { "red": "active", "blue": "inactive" }, "SHIFT3": { "red": "inactive", "blue": "active" }, "SHIFT4": { "red": "active", "blue": "inactive" } },
+      "blueWinsAuto": { "SHIFT1": { "red": "active", "blue": "inactive" }, "SHIFT2": { "red": "inactive", "blue": "active" }, "SHIFT3": { "red": "active", "blue": "inactive" }, "SHIFT4": { "red": "inactive", "blue": "active" } }
+    }
+  },
+  "fuelStaging": {
+    "total": 504,
+    "perDepot": 24,
+    "perChute": 24,
+    "preloadPerRobot": 8,
+    "neutralZone": "360-408 depending on preloads, +/-24 variance; up to 600 at Champs",
+    "neutralArrangement": "206x72in bounding box w/ 2in divider, roughly equal split across CENTER LINE",
+    "source": "manual-6.3.4"
+  },
+  "points": {
+    "fuelActiveAuto": 1,
+    "fuelActiveTeleop": 1,
+    "fuelInactive": 0,
+    "towerAutoL1": 15,
+    "towerAutoMaxRobots": 2,
+    "towerTeleop": { "L1": 10, "L2": 20, "L3": 30 },
+    "note": "Editable only via rules override panel labeled hypothetical."
+  },
+  "rankingPoints": {
+    "tier": "regional-district",
+    "thresholds": { "energized": 100, "supercharged": 360, "traversal": 50 },
+    "tiers": {
+      "regional-district": { "energized": 100, "supercharged": 360, "traversal": 50 },
+      "districtChamps": { "energized": 240, "supercharged": 360, "traversal": 50 },
+      "firstChamps": { "energized": 360, "supercharged": 500, "traversal": 50 }
+    },
+    "win": 3,
+    "tie": 1
+  },
+  "robotLimits": {
+    "weightLb": 115.0,
+    "perimeterIn": 110.0,
+    "startHeightIn": 30.0,
+    "horizontalExtensionIn": 12.0,
+    "verticalLimitIn": 30.0,
+    "note": "R104-R107. R107 vertical limit constrains shooter/climb packaging — flag for Q&A re-check.",
+    "source": "manual-8.1"
+  },
+  "towerCriteria": {
+    "L1": "no longer touching carpet or TOWER BASE",
+    "L2": "BUMPERS completely above LOW RUNG (27in)",
+    "L3": "BUMPERS completely above MID RUNG (45in)",
+    "contact": "must contact RUNG and/or UPRIGHT; may additionally contact TOWER WALL, support, FUEL, another ROBOT",
+    "source": "manual-6.5.2"
+  }
+}

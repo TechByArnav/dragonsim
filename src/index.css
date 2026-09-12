@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body { @apply bg-dragon-900 text-zinc-100 font-body; }
+.font-display { font-family: Rajdhani, system-ui, sans-serif; }
+.panel { @apply bg-dragon-800/80 border border-white/10 rounded-xl; }
+.kpi { @apply panel p-3; }
+.btn-primary { @apply bg-dragon-500 hover:bg-dragon-700 text-dragon-950 font-display font-bold px-4 py-2 rounded-lg transition; }
+.btn-ghost { @apply border border-white/15 hover:border-dragon-500/60 px-4 py-2 rounded-lg font-display font-semibold transition; }
+.label { @apply text-[11px] uppercase tracking-widest text-zinc-400; }
+input, select, textarea { @apply bg-black/40 border border-white/10 rounded px-2 py-1 text-sm; }
+input[type='range'] { @apply w-full accent-green-500; }
+table.data { @apply w-full text-sm; }
+table.data th { @apply text-left label pb-1; }
+table.data td { @apply border-t border-white/10 py-1 font-mono; }
