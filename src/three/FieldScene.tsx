@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useApp } from '../store';
 import { astar, clampOutOfColliders, fieldGridFromConstants } from '../sim/nav';
 import { computeHeatmapSync } from '../sim/heatmap';
-import { PlaythroughRobot, PlaythroughControls, usePlaythrough } from './Playthrough';
+import { PlaythroughRobot, PlaythroughTrail, PlaythroughControls, usePlaythrough } from './Playthrough';
 
 const L = 651.2, W = 317.7;
 const LIME = '#7fee64';
@@ -25,12 +25,15 @@ function ClickCatcher({ onPick }: { onPick: (p: { x: number; y: number }) => voi
   );
 }
 
-function Label({ pos, text }: { pos: [number, number, number]; text: string }) {
+// Tiny dim labels. Simple mode shows MAJOR landmarks only (hubs + towers)
+// so the action stays visible; Advanced shows everything.
+function Label({ pos, text, major }: { pos: [number, number, number]; text: string; major?: boolean }) {
   const s = useApp();
   if (!s.labels) return null;
+  if (s.simpleMode && !major && !s.debug) return null;
   return (
-    <Html distanceFactor={1500} position={pos} center style={{ pointerEvents: 'none' }} occlude={false}>
-      <div style={{ fontSize: 9, lineHeight: 1.2, fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,0,0,.55)', color: '#aed2a4', padding: '0px 5px', borderRadius: 5, border: '1px solid #48534688', whiteSpace: 'nowrap', opacity: 0.9 }}>{text}</div>
+    <Html distanceFactor={1900} position={pos} center style={{ pointerEvents: 'none' }} occlude={false} zIndexRange={[5, 0]}>
+      <div style={{ fontSize: 8, lineHeight: 1.2, fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,0,0,.42)', color: '#677d64', padding: '0px 4px', borderRadius: 4, border: '1px solid #48534655', whiteSpace: 'nowrap', opacity: 0.85 }}>{text}</div>
     </Html>
   );
 }
@@ -94,7 +97,7 @@ function Hub({ x, alliance, label }: { x: number; alliance: 'red' | 'blue'; labe
         <meshStandardMaterial color="#9aa5a0" transparent opacity={0.28} side={THREE.DoubleSide} wireframe />
       </mesh>
       <HubPulse x={0} alliance={alliance} />
-      <group position={[0, 0, 0]}><Label pos={[0, 0, 42]} text={label} /></group>
+      <group position={[0, 0, 0]}><Label major pos={[0, 0, 42]} text={label} /></group>
     </group>
   );
 }
@@ -179,7 +182,7 @@ function Tower({ x, alliance }: { x: number; alliance: 'red' | 'blue' }) {
         <boxGeometry args={[4, 49.25, 15]} />
         <meshStandardMaterial color="#22262b" metalness={0.6} roughness={0.5} />
       </mesh>
-      <Label pos={[0, 0, 84]} text={`${alliance.toUpperCase()} TOWER · 27/45/63`} />
+      <Label major pos={[0, 0, 84]} text={`${alliance.toUpperCase()} TOWER · 27/45/63`} />
     </group>
   );
 }
@@ -320,8 +323,9 @@ function FuelPiles() {
 }
 
 function CameraRig({ preset }: { preset: string }) {
-  const { camera } = useThree();
-  useMemo(() => {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => (s as any).controls) as any;
+  useEffect(() => {
     if (preset === 'top') camera.position.set(0, 0, 720);
     else if (preset === 'side') camera.position.set(0, -560, 110);
     else if (preset === 'end') camera.position.set(-560, 0, 150);
@@ -331,7 +335,8 @@ function CameraRig({ preset }: { preset: string }) {
     else if (preset === 'hub') camera.position.set(-167, -170, 130);
     else camera.position.set(0, -380, 320);
     camera.lookAt(0, 0, 0);
-  }, [preset, camera]);
+    controls?.update?.();
+  }, [preset, camera, controls]);
   return null;
 }
 
@@ -448,6 +453,9 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
             <PlaythroughRobot t={t} slot={2} />
           </Suspense>
         )}
+        <PlaythroughTrail slot={0} />
+        {s.allianceMode && <PlaythroughTrail slot={1} />}
+        {s.allianceMode && <PlaythroughTrail slot={2} />}
         <Animator setT={setT} total={total} playing={playing} speed={speed} />
         {measure.a && measure.b && (
           <group>

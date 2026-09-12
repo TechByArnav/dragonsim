@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useApp, allStrategies, allRobots } from '../store';
 import { planStrategy } from '../sim/strategy';
@@ -95,7 +96,7 @@ export function usePlaythrough(slot = 0) {
 }
 
 export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) {
-  const { path } = usePlaythrough(slot);
+  const { path, robotName } = usePlaythrough(slot);
   const s = useApp();
   const ref = useRef<THREE.Group>(null);
   const pos = useMemo(() => {
@@ -120,15 +121,42 @@ export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) 
     }
   });
   const color = SLOT_COLORS[slot % 3];
+  const trail = useMemo(() => {
+    if (path.length < 2) return null;
+    return new THREE.BufferGeometry().setFromPoints(path.map((p) => new THREE.Vector3(p.x, p.y, 1.1)));
+  }, [path]);
+  const shortName = String(robotName ?? '').split(' ')[0] ?? `R${slot + 1}`;
 
   return (
     <group ref={ref} position={[pos.x, pos.y, 0]} rotation={[0, 0, pos.heading]}>
-      <DetailedRobot position={[0, 0, 0]} alliance={s.alliance} />
+      <DetailedRobot position={[0, 0, 0]} alliance={s.alliance} accent={color} />
       <mesh position={[0, 0, 0.4]}>
         <ringGeometry args={[16, 18.5, 40]} />
-        <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={color} transparent opacity={0.45} side={THREE.DoubleSide} />
       </mesh>
+      {/* floating name pill — follows this robot */}
+      <Html position={[0, 0, 40]} center distanceFactor={1400} style={{ pointerEvents: 'none' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#000', background: color, padding: '2px 10px', borderRadius: 9999, whiteSpace: 'nowrap', border: '2px solid #00000088' }}>
+          R{slot + 1} · {shortName}
+        </div>
+      </Html>
     </group>
+  );
+}
+
+// Full route trail per robot in its slot color (rendered once, outside the moving group).
+export function PlaythroughTrail({ slot = 0 }: { slot?: number }) {
+  const { path } = usePlaythrough(slot);
+  const color = SLOT_COLORS[slot % 3];
+  const geom = useMemo(() => {
+    if (path.length < 2) return null;
+    return new THREE.BufferGeometry().setFromPoints(path.map((p) => new THREE.Vector3(p.x, p.y, 1.0)));
+  }, [path]);
+  if (!geom) return null;
+  return (
+    <lineSegments geometry={geom}>
+      <lineBasicMaterial color={color} transparent opacity={0.55} />
+    </lineSegments>
   );
 }
 

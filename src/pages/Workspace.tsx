@@ -293,8 +293,16 @@ function AllianceTotal({ sim }: { sim: ReturnType<typeof useSim> }) {
   return (
     <div className="panel p-2 mt-2 text-xs">
       <div className="font-display font-bold">Alliance (3 robots, simplified)</div>
-      <div className="font-mono">R1 {sim.scored.total.toFixed(0)} + R2 ~{(sim.scored.total * w[1]).toFixed(0)} + R3 ~{(sim.scored.total * w[2]).toFixed(0)} − congestion ≈ <b>{Math.max(0, combined).toFixed(0)} pts</b></div>
-      <div className="text-zinc-500">Shared HUB + lane overlap penalized. Tune roles above to test scorer/support/climb splits.</div>
+      <div className="flex gap-1 mt-1">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="px-2 py-0.5 rounded-full font-mono font-bold text-black"
+            style={{ background: ['#7fee64', '#22d3ee', '#f5c518'][i] }}>
+            R{i + 1} {i === 0 ? sim.scored.total.toFixed(0) : `~${(sim.scored.total * w[i]).toFixed(0)}`}
+          </span>
+        ))}
+        <span className="font-mono ml-auto">≈ <b>{Math.max(0, combined).toFixed(0)} pts</b></span>
+      </div>
+      <div className="text-zinc-500 mt-1">Match the pill colors to the robots + trails on the field. Shared HUB congestion penalized. Tune roles above.</div>
     </div>
   );
 }

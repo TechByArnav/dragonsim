@@ -5,7 +5,7 @@ import { useApp } from '../store';
 // Detailed + realistic single-team robot: procedural engineering model
 // (chassis, 4x swerve, bumpers, intake, shooter hood, climber) with PBR
 // materials. Optional user GLB import overrides procedural body.
-export function DetailedRobot({ position, alliance }: { position: [number, number, number]; alliance: 'red' | 'blue' }) {
+export function DetailedRobot({ position, alliance, accent = '#7fee64' }: { position: [number, number, number]; alliance: 'red' | 'blue'; accent?: string }) {
   const s = useApp();
   const robot = s.robot();
   const fp = robot.footprintIn ?? { x: 29, y: 29 };
@@ -47,13 +47,13 @@ export function DetailedRobot({ position, alliance }: { position: [number, numbe
           ))}
           {/* intake rollers (front) */}
           <group position={[fp.x / 2 + 2, 0, 6]}>
-            <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[1.6, 1.6, fp.y - 8, 16]} /><meshStandardMaterial color="#7fee64" emissive="#1a3a1a" emissiveIntensity={0.5} metalness={0.4} roughness={0.4} /></mesh>
-            <mesh position={[0, 0, 3]}><boxGeometry args={[3, fp.y - 6, 1]} /><meshStandardMaterial color="#7fee64" metalness={0.2} roughness={0.6} /></mesh>
+            <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[1.6, 1.6, fp.y - 8, 16]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.35} metalness={0.4} roughness={0.4} /></mesh>
+            <mesh position={[0, 0, 3]}><boxGeometry args={[3, fp.y - 6, 1]} /><meshStandardMaterial color={accent} metalness={0.2} roughness={0.6} /></mesh>
           </group>
           {/* shooter hood */}
           <group position={[-4, 0, 18]}>
             <mesh castShadow><boxGeometry args={[12, 12, 6]} /><meshStandardMaterial color="#181818" metalness={0.5} roughness={0.45} /></mesh>
-            <mesh position={[0, 0, 4.4]} rotation={[0, 0, 0.5]}><boxGeometry args={[9, 9, 1.4]} /><meshStandardMaterial color="#7fee64" emissive="#1d4d1d" emissiveIntensity={0.9} /></mesh>
+            <mesh position={[0, 0, 4.4]} rotation={[0, 0, 0.5]}><boxGeometry args={[9, 9, 1.4]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.6} /></mesh>
           </group>
           {/* climber arms */}
           <group position={[-fp.x / 2 + 4, 0, 16]}>
@@ -72,7 +72,7 @@ export function DetailedRobot({ position, alliance }: { position: [number, numbe
       </mesh>
       <mesh position={[0, 0, 26.5]}>
         <boxGeometry args={[fp.x - 6, 0.6, 0.6]} />
-        <meshStandardMaterial color="#7fee64" emissive="#7fee64" emissiveIntensity={1.4} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={1.4} />
       </mesh>
     </group>
   );
