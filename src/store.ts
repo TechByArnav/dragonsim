@@ -29,6 +29,7 @@ export interface AppState {
   seed: number;
   glbUrl: string | null;
   compareId: string | null;
+  simpleMode: boolean;
   set: (p: Partial<AppState>) => void;
   robot: () => any;
 }
@@ -58,6 +59,7 @@ export const useApp = create<AppState>((set, get) => ({
   seed: 422,
   glbUrl: null,
   compareId: null,
+  simpleMode: true,
   set: (p) => set(p),
   robot: () => {
     const base = (archetypes as any).archetypes.find((r: any) => r.id === get().robotId) ?? (archetypes as any).archetypes[1];

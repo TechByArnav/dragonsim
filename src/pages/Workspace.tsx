@@ -11,10 +11,25 @@ import { AnalyticsView } from './AnalyticsView';
 import { ContextView } from './ContextView';
 import { SavedView, SettingsView } from './SavedSettings';
 
-const RAIL: { id: any; label: string }[] = [
-  { id: 'home', label: 'Home' }, { id: 'field', label: 'Field' }, { id: 'robots', label: 'Robots' },
-  { id: 'strategies', label: 'Strategies' }, { id: 'simulate', label: 'Simulate' }, { id: 'analytics', label: 'Analytics' },
-  { id: 'context', label: 'Context Library' }, { id: 'saved', label: 'Saved Scenarios' }, { id: 'settings', label: 'Settings' },
+// Simplified rail: 5 primary actions + library group. Advanced pages still reachable.
+const RAIL_MAIN: { id: any; label: string; hint: string }[] = [
+  { id: 'simulate', label: '▶ Simulate', hint: '3D + score' },
+  { id: 'robots', label: '🤖 Robot', hint: 'pick + tune' },
+  { id: 'strategies', label: '🗺 Strategy', hint: 'pick plan' },
+  { id: 'analytics', label: '📊 Results', hint: 'charts + export' },
+  { id: 'field', label: '🏟 Field', hint: 'explore 3D' },
+];
+const RAIL_MORE: { id: any; label: string }[] = [
+  { id: 'context', label: 'Library' },
+  { id: 'saved', label: 'Saved' },
+  { id: 'settings', label: 'Settings' },
+];
+
+const DEST_PRESETS: { label: string; x: number; y: number }[] = [
+  { label: 'Neutral pile', x: 0, y: 0 },
+  { label: 'My HUB', x: -110, y: 20 },
+  { label: 'Depot', x: -280, y: 100 },
+  { label: 'Outpost', x: -270, y: -120 },
 ];
 
 export function useSim() {
@@ -58,9 +73,6 @@ export function useSim() {
 export function Workspace() {
   const s = useApp();
   const sim = useSim();
-  const [measureMode, setMeasureMode] = useState(false);
-  const [mA, setMA] = useState<{ x: number; y: number } | null>(null);
-  const [mB, setMB] = useState<{ x: number; y: number } | null>(null);
 
   return (
     <div className="h-full flex flex-col">
@@ -69,54 +81,47 @@ export function Workspace() {
           <img src="./dragon.svg" className="w-7 h-7" alt="home" />
           <span className="font-display font-bold text-lg">DragonSim</span>
         </button>
-        <span className="text-xs text-zinc-400">Team 422 Shenron · field v1.0.0 · rules TU22 · inches</span>
+        <span className="text-xs text-zinc-400 hidden md:inline">Team 422 Shenron · REBUILT</span>
         <span className="ml-auto" />
         <label className="text-xs flex items-center gap-1">Alliance
           <select value={s.alliance} onChange={(e) => s.set({ alliance: e.target.value as any })}>
             <option value="blue">Blue</option><option value="red">Red</option>
           </select>
         </label>
-        <label className="text-xs flex items-center gap-1">Units
-          <select value={s.units} onChange={(e) => s.set({ units: e.target.value as any })}>
-            <option value="imperial">in</option><option value="metric">metric</option>
-          </select>
-        </label>
-        <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={s.debug} onChange={(e) => s.set({ debug: e.target.checked })} /> Debug</label>
-        <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={s.heatmap} onChange={(e) => s.set({ heatmap: e.target.checked })} /> Heatmap</label>
+        <button
+          onClick={() => s.set({ simpleMode: !s.simpleMode })}
+          title="Simple hides advanced sliders; Advanced shows everything"
+          className={`text-xs px-3 py-1.5 rounded-lg font-display font-bold border ${s.simpleMode ? 'bg-dragon-500 text-dragon-950 border-dragon-500' : 'border-white/20 text-zinc-200'}`}
+        >
+          {s.simpleMode ? 'Simple ✓' : 'Advanced'}
+        </button>
       </header>
       <div className="flex-1 flex min-h-0">
-        <nav className="w-40 shrink-0 border-r border-white/10 p-2 space-y-1 bg-black/30">
-          {RAIL.map((r) => (
+        <nav className="w-36 shrink-0 border-r border-white/10 p-2 space-y-1 bg-black/30">
+          {RAIL_MAIN.map((r) => (
             <button key={r.id} onClick={() => s.set({ view: r.id })}
-              className={`w-full text-left px-3 py-2 rounded-lg font-display font-semibold text-sm ${s.view === r.id ? 'bg-dragon-500/20 border border-dragon-500/50' : 'hover:bg-white/5 border border-transparent'}`}>
+              className={`w-full text-left px-3 py-2 rounded-lg ${s.view === r.id ? 'bg-dragon-500/20 border border-dragon-500/50' : 'hover:bg-white/5 border border-transparent'}`}>
+              <div className="font-display font-bold text-sm">{r.label}</div>
+              <div className="text-[11px] text-zinc-500">{r.hint}</div>
+            </button>
+          ))}
+          <div className="label px-2 pt-2">More</div>
+          {RAIL_MORE.map((r) => (
+            <button key={r.id} onClick={() => s.set({ view: r.id })}
+              className={`w-full text-left px-3 py-1.5 rounded-lg text-xs ${s.view === r.id ? 'bg-white/10 border border-white/20' : 'hover:bg-white/5 border border-transparent text-zinc-300'}`}>
               {r.label}
             </button>
           ))}
-          <div className="text-[11px] text-zinc-500 px-2 pt-3">Single-robot v1.<br />Alliance planner deferred.</div>
         </nav>
         <div className="flex-1 flex flex-col min-w-0">
           {(s.view === 'field' || s.view === 'simulate') && (
             <>
-              <div className="flex gap-2 px-3 py-2 text-xs border-b border-white/10 flex-wrap">
-                <span className="panel px-2 py-1">Click field = move origin · Set dest below</span>
-                <label>Dest X<input type="number" value={s.dest?.x ?? -120} onChange={(e) => s.set({ dest: { x: +e.target.value, y: s.dest?.y ?? 0 } })} className="w-20 ml-1" /></label>
-                <label>Dest Y<input type="number" value={s.dest?.y ?? 0} onChange={(e) => s.set({ dest: { x: s.dest?.x ?? -120, y: +e.target.value } })} className="w-20 ml-1" /></label>
-                <button className="btn-ghost !py-1" onClick={() => { setMeasureMode(!measureMode); setMA(s.origin); setMB(s.dest); }}>📏 Measure</button>
-                <label>Heat
-                  <select value={s.heatMode} onChange={(e) => s.set({ heatMode: e.target.value })} className="ml-1">
-                    <option value="theoretical">theoretical</option><option value="realistic">realistic</option>
-                    <option value="congested">congested</option><option value="defended">defended</option>
-                    <option value="return-hub">return-to-HUB</option><option value="to-fuel">time-to-FUEL</option>
-                  </select>
-                </label>
-                <label>Grid<input type="number" value={s.gridIn} min={4} max={16} step={1} onChange={(e) => s.set({ gridIn: +e.target.value })} className="w-14 ml-1" /> in</label>
-                {measureMode && <span className="text-gold">Measure: origin→dest distance shown in viewport (editable dest).</span>}
-              </div>
+              <SimpleToolbar />
               <div className="flex-1 flex min-h-0">
                 <div className="flex-1 min-w-0" style={{ minHeight: 420 }}>
-                  <FieldScene measure={{ a: measureMode ? mA : null, b: measureMode ? mB : null }} />
+                  <FieldScene measure={{ a: null, b: null }} />
                 </div>
-                <aside className="w-80 shrink-0 border-l border-white/10 p-3 space-y-3 overflow-y-auto bg-black/20">
+                <aside className="w-[340px] shrink-0 border-l border-white/10 p-3 space-y-3 overflow-y-auto bg-black/20">
                   <RightPanel sim={sim} />
                 </aside>
               </div>
@@ -136,97 +141,143 @@ export function Workspace() {
   );
 }
 
-function RightPanel({ sim }: { sim: ReturnType<typeof useSim> }) {
+// Only destination presets in simple mode; numbers + heat + measure live in Advanced.
+function SimpleToolbar() {
   const s = useApp();
-  const r = sim.robot;
-  const u = (inch: number) => (s.units === 'metric' ? `${(inch * 2.54).toFixed(1)} cm` : `${inch.toFixed(1)} in`);
   return (
-    <div className="space-y-3 text-sm">
-      <div className="kpi">
-        <div className="label">Selected robot (single-team)</div>
-        <select value={s.robotId} onChange={(e) => s.set({ robotId: e.target.value })} className="w-full mt-1">
-          {allRobots().map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <div className="mt-1 text-xs text-zinc-400">{r.desc}</div>
-        <div className="grid grid-cols-2 gap-1 mt-2 font-mono text-xs">
-          <div>vmax {r.vmaxInPerSec} in/s</div><div>storage {r.storage}</div>
-          <div>acc {s.zone} {Math.round((r.accuracy?.[s.zone] ?? 0) * 100)}%</div><div>climb L{(r.climb?.levels ?? []).join('/') || '—'}</div>
-        </div>
-      </div>
-      <div className="kpi">
-        <div className="label">Active strategy</div>
-        <div className="font-display font-bold">{sim.tele.name}</div>
-        <div className="text-xs text-zinc-400">AUTO winner: {s.autoWinner} → {s.alliance} HUB {hubStateNote(s.alliance, s.autoWinner)}</div>
-      </div>
-      <div className="kpi">
-        <div className="label">Current route (origin → dest)</div>
-        {sim.route?.reachable && sim.seg ? (
-          <div className="font-mono text-xs mt-1">
-            <div>distance {u(sim.route.distanceIn)}</div>
-            <div>best {sim.seg.bestSec.toFixed(1)}s · <b>expected {sim.seg.realisticSec.toFixed(1)}s</b> · conservative {sim.seg.conservativeSec.toFixed(1)}s</div>
-            <details className="mt-1 text-zinc-400"><summary>Assumptions</summary>{sim.seg.assumptions.map((a, i) => <div key={i}>· {a}</div>)}</details>
-          </div>
-        ) : <div className="text-amber-300 text-xs mt-1">No valid route — {sim.route?.reason ?? 'set a destination'}. Invalid routes are never presented as legal.</div>}
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div className="kpi"><div className="label">Expected</div><div className="font-display text-2xl font-bold text-dragon-500">{sim.scored.total.toFixed(0)}</div><div className="text-[11px]">pts (fuel {sim.scored.fuelPoints.toFixed(0)} + tower {sim.scored.towerPoints})</div></div>
-        <div className="kpi"><div className="label">Best</div><div className="font-display text-2xl font-bold">{sim.best.toFixed(0)}</div><div className="text-[11px]">p90 {sim.mc.p90.toFixed(0)}</div></div>
-        <div className="kpi"><div className="label">Conservative</div><div className="font-display text-2xl font-bold">{sim.cons.toFixed(0)}</div><div className="text-[11px]">p10 {sim.mc.p10.toFixed(0)}</div></div>
-      </div>
-      <div className="kpi text-xs">
-        <div className="label">Cycle (estimated)</div>
-        <div>{sim.plan.cycles} cycles · avg {sim.avgCycle.toFixed(1)}s · collect {sim.plan.collectSec.toFixed(0)}s · travel {sim.plan.travelSec.toFixed(0)}s · score {sim.plan.scoreSec.toFixed(0)}s</div>
-        <div className="text-amber-200/90">Inactive-HUB hold: {sim.plan.lostInactiveSec.toFixed(1)}s · attempted-inactive scored 0 ({sim.scored.teleInactiveAttempted.toFixed(0)} FUEL)</div>
-      </div>
-      <div className="kpi text-xs">
-        <div className="label">Assumptions ledger</div>
-        <div>· Baseline engineering estimates — not measured Shenron facts</div>
-        <div>· Trapezoidal motion + A* grid {s.gridIn}in + congestion {s.congestion}s + defense {s.defense}s</div>
-        <div>· HUB gating per Table 6-3 · +3s ENDGAME tail · RP 100/360/50</div>
-        <div className="text-amber-200/80">· Needs verification: BUMP/TRENCH/DEPOT/OUTPOST XY, R107 vertical limit vs climber, AndyMark-vs-welded delta (Chesapeake = AndyMark)</div>
-      </div>
-      <SimControls />
+    <div className="flex gap-2 px-3 py-2 text-xs border-b border-white/10 flex-wrap items-center">
+      <span className="text-zinc-400">👆 Click field to move robot · Drive to:</span>
+      {DEST_PRESETS.map((d) => {
+        const mineHub = s.alliance === 'blue' ? { x: -110, y: 20 } : { x: 110, y: -20 };
+        const pos = d.label === 'My HUB' ? mineHub : { x: d.x, y: d.y };
+        const active = s.dest && Math.abs(s.dest.x - pos.x) < 4 && Math.abs(s.dest.y - pos.y) < 4;
+        return (
+          <button key={d.label} onClick={() => s.set({ dest: pos })}
+            className={`px-3 py-1.5 rounded-lg border font-semibold ${active ? 'bg-dragon-500 text-dragon-950 border-dragon-500' : 'border-white/15 hover:border-dragon-500/60'}`}>
+            {d.label}
+          </button>
+        );
+      })}
+      {!s.simpleMode && <AdvancedToolbar />}
     </div>
   );
 }
 
-function hubStateNote(alliance: string, winner: string) {
-  if (winner === 'tie') return 'tie → FMS random (modeled as red-first)';
-  return alliance === winner ? 'inactive SHIFT1, then alternates' : 'ACTIVE SHIFT1, then alternates';
+function AdvancedToolbar() {
+  const s = useApp();
+  const [measure, setMeasure] = useState(false);
+  return (
+    <>
+      <label className="panel px-2 py-1">Dest X<input type="number" value={s.dest?.x ?? 0} onChange={(e) => s.set({ dest: { x: +e.target.value, y: s.dest?.y ?? 0 } })} className="w-20 ml-1" /></label>
+      <label className="panel px-2 py-1">Dest Y<input type="number" value={s.dest?.y ?? 0} onChange={(e) => s.set({ dest: { x: s.dest?.x ?? 0, y: +e.target.value } })} className="w-20 ml-1" /></label>
+      <button className="btn-ghost !py-1" onClick={() => setMeasure(!measure)}>📏 Measure {measure ? 'on' : 'off'}</button>
+      <label className="flex items-center gap-1"><input type="checkbox" checked={s.heatmap} onChange={(e) => s.set({ heatmap: e.target.checked })} /> Heatmap</label>
+      <label>Heat<select value={s.heatMode} onChange={(e) => s.set({ heatMode: e.target.value })} className="ml-1">
+        <option value="theoretical">theoretical</option><option value="realistic">realistic</option>
+        <option value="congested">congested</option><option value="defended">defended</option>
+      </select></label>
+      <label className="flex items-center gap-1"><input type="checkbox" checked={s.debug} onChange={(e) => s.set({ debug: e.target.checked })} /> Debug</label>
+      <label>Units<select value={s.units} onChange={(e) => s.set({ units: e.target.value as any })} className="ml-1">
+        <option value="imperial">in</option><option value="metric">metric</option>
+      </select></label>
+    </>
+  );
+}
+
+function RightPanel({ sim }: { sim: ReturnType<typeof useSim> }) {
+  const s = useApp();
+  return (
+    <div className="space-y-3 text-sm">
+      {/* Step 1 */}
+      <div className="kpi">
+        <div className="font-display font-bold">1 · Robot</div>
+        <select value={s.robotId} onChange={(e) => s.set({ robotId: e.target.value })} className="w-full mt-1 text-base py-1.5">
+          {allRobots().map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div className="text-xs text-zinc-400 mt-1">{sim.robot.desc}</div>
+      </div>
+      {/* Step 2 */}
+      <div className="kpi">
+        <div className="font-display font-bold">2 · Plan</div>
+        <select value={s.teleStrategyId} onChange={(e) => s.set({ teleStrategyId: e.target.value })} className="w-full mt-1 text-base py-1.5">
+          {allStrategies().filter((x: any) => x.phase === 'TELEOP').map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div className="grid grid-cols-3 gap-1 mt-2">
+          {(['close', 'mid', 'long'] as const).map((z) => (
+            <button key={z} onClick={() => s.set({ zone: z })}
+              className={`py-1.5 rounded-lg border text-xs font-bold ${s.zone === z ? 'bg-dragon-500 text-dragon-950 border-dragon-500' : 'border-white/15'}`}>{z}</button>
+          ))}
+        </div>
+        <div className="grid grid-cols-4 gap-1 mt-1">
+          {([0, 1, 2, 3] as const).map((lv) => (
+            <button key={lv} onClick={() => s.set({ climbLevel: lv })}
+              className={`py-1.5 rounded-lg border text-xs font-bold ${s.climbLevel === lv ? 'bg-gold text-black border-gold' : 'border-white/15'}`}>
+              {lv === 0 ? 'No climb' : `L${lv}`}
+            </button>
+          ))}
+        </div>
+        {!s.simpleMode && <SimControls />}
+      </div>
+      {/* Step 3 */}
+      <div className="kpi">
+        <div className="font-display font-bold">3 · Score <span className="text-[11px] font-body font-normal text-zinc-400">(estimate, not a guarantee)</span></div>
+        <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+          <div className="panel p-2"><div className="label">Low</div><div className="font-display text-2xl font-bold">{sim.cons.toFixed(0)}</div></div>
+          <div className="panel p-2 border-dragon-500/50"><div className="label">Expected</div><div className="font-display text-3xl font-bold text-dragon-500">{sim.scored.total.toFixed(0)}</div><div className="text-[11px]">fuel {sim.scored.fuelPoints.toFixed(0)} + climb {sim.scored.towerPoints}</div></div>
+          <div className="panel p-2"><div className="label">High</div><div className="font-display text-2xl font-bold">{sim.best.toFixed(0)}</div></div>
+        </div>
+        <div className="text-xs text-zinc-300 mt-2">
+          🚗 Drive there in <b>~{sim.seg ? sim.seg.realisticSec.toFixed(1) : '—'}s</b>
+          {sim.route ? ` (${sim.route.distanceIn.toFixed(0)} in)` : ''} · 🔁 {sim.plan.cycles} cycles × ~{sim.avgCycle.toFixed(0)}s
+        </div>
+        {sim.scored.teleInactiveAttempted > 0.5 && (
+          <div className="text-xs text-amber-200 mt-1">⏳ {sim.scored.teleInactiveAttempted.toFixed(0)} FUEL arrived while HUB was off (0 pts) — try a different AUTO winner or depot timing.</div>
+        )}
+        <button onClick={() => s.set({ view: 'analytics' })} className="btn-primary w-full mt-2">See charts + export →</button>
+        {!s.simpleMode && <Assumptions sim={sim} />}
+      </div>
+    </div>
+  );
+}
+
+function Assumptions({ sim }: { sim: ReturnType<typeof useSim> }) {
+  const s = useApp();
+  return (
+    <details className="text-xs text-zinc-400 mt-2">
+      <summary className="cursor-pointer">Assumptions + route math</summary>
+      <div className="mt-1">Trapezoidal + A* grid {s.gridIn}in, congestion +{s.congestion}s, defense +{s.defense}s. HUB gating Table 6-3, RP 100/360/50.</div>
+      {sim.seg?.assumptions.map((a, i) => <div key={i}>· {a}</div>)}
+      <div className="text-amber-200/80">Needs verification: element XY, R107 vertical limit, AndyMark delta (Chesapeake = AndyMark).</div>
+    </details>
+  );
 }
 
 function SimControls() {
   const s = useApp();
   return (
-    <div className="kpi text-xs space-y-2">
-      <div className="label">Simulation run controls</div>
+    <div className="text-xs space-y-2 mt-2 border-t border-white/10 pt-2">
+      <div className="label">Fine-tuning (advanced)</div>
       <label className="flex justify-between">AUTO winner
         <select value={s.autoWinner} onChange={(e) => s.set({ autoWinner: e.target.value as any })}>
-          <option value="red">Red scores more</option><option value="blue">Blue scores more</option><option value="tie">Tie (FMS random)</option>
+          <option value="red">Red scores more</option><option value="blue">Blue scores more</option><option value="tie">Tie (random)</option>
         </select>
       </label>
-      <label className="flex justify-between">Shoot zone
-        <select value={s.zone} onChange={(e) => s.set({ zone: e.target.value as any })}>
-          <option value="close">close</option><option value="mid">mid</option><option value="long">long</option>
-        </select>
-      </label>
-      <label>Congestion +{s.congestion.toFixed(1)}s <input type="range" min={0} max={4} step={0.1} value={s.congestion} onChange={(e) => s.set({ congestion: +e.target.value })} /></label>
+      <label>Traffic +{s.congestion.toFixed(1)}s <input type="range" min={0} max={4} step={0.1} value={s.congestion} onChange={(e) => s.set({ congestion: +e.target.value })} /></label>
       <label>Defense +{s.defense.toFixed(1)}s <input type="range" min={0} max={6} step={0.1} value={s.defense} onChange={(e) => s.set({ defense: +e.target.value })} /></label>
-      <label>Climb
-        <select value={s.climbLevel} onChange={(e) => s.set({ climbLevel: +e.target.value as any })}>
-          <option value={0}>skip</option><option value={1}>L1</option><option value={2}>L2</option><option value={3}>L3</option>
+      <label>Endgame
+        <select value={s.endgameId} onChange={(e) => s.set({ endgameId: e.target.value })}>
+          <option value="end-early">Climb early</option><option value="end-late">Last cycle + climb</option><option value="end-skip">Skip climb</option>
         </select>
       </label>
-      <label>MC runs {s.mcRuns} <input type="range" min={100} max={2000} step={100} value={s.mcRuns} onChange={(e) => s.set({ mcRuns: +e.target.value })} /></label>
-      <label className="flex justify-between">Seed<input type="number" value={s.seed} onChange={(e) => s.set({ seed: +e.target.value })} className="w-24" /></label>
     </div>
   );
 }
 
 function BottomTimeline({ sim }: { sim: ReturnType<typeof useSim> }) {
+  const s = useApp();
   const segs = [
-    { id: 'AUTO 0:20', w: 20 }, { id: 'TRANS 2:20–2:10', w: 10 }, { id: 'S1 2:10–1:45', w: 25 },
-    { id: 'S2 1:45–1:20', w: 25 }, { id: 'S3 1:20–0:55', w: 25 }, { id: 'S4 0:55–0:30', w: 25 }, { id: 'END 0:30–0:00', w: 30 },
+    { id: 'AUTO', w: 20 }, { id: 'TRANS', w: 10 }, { id: 'S1', w: 25 },
+    { id: 'S2', w: 25 }, { id: 'S3', w: 25 }, { id: 'S4', w: 25 }, { id: 'END', w: 30 },
   ];
   const total = 160;
   return (
@@ -236,9 +287,9 @@ function BottomTimeline({ sim }: { sim: ReturnType<typeof useSim> }) {
           <div key={g.id} style={{ width: `${(100 * g.w) / total}%` }} className="border-r border-white/10 bg-dragon-800/60 flex items-center justify-center truncate px-1" title={g.id}>{g.id}</div>
         ))}
       </div>
-      <div className="text-[11px] font-mono text-zinc-300 mt-1 max-h-16 overflow-y-auto">
-        {sim.plan.events.slice(0, 14).map((e, i) => <span key={i} className="mr-3">t+{e.t.toFixed(0)}s [{e.kind}] {e.detail}</span>)}
-        {sim.plan.events.length > 14 && <span>… +{sim.plan.events.length - 14} more · climb decision at ENDGAME cutoff · HUB context: {sim.tele.name}</span>}
+      <div className="text-xs text-zinc-300 mt-1">
+        {sim.plan.cycles} cycles · {sim.scored.total.toFixed(0)} pts expected · climb {s.climbLevel === 0 ? 'skipped' : `L${s.climbLevel}`} · {s.alliance} HUB {s.alliance === s.autoWinner ? 'off' : 'ON'} in S1
+        {!s.simpleMode && <span className="font-mono text-[11px] text-zinc-400"> · {sim.plan.events.slice(0, 6).map((e) => `t+${e.t.toFixed(0)}s ${e.kind}`).join(' · ')}…</span>}
       </div>
     </div>
   );
@@ -252,16 +303,18 @@ function StrategiesPanel() {
     <div className="p-4 grid md:grid-cols-3 gap-3 overflow-y-auto">
       {phases.map((ph) => (
         <div key={ph} className="panel p-3">
-          <div className="font-display font-bold">{ph}</div>
-          {list.filter((x: any) => x.phase === ph).map((x: any) => (
-            <button key={x.id} onClick={() => s.set(ph === 'AUTO' ? { strategyId: x.id } : ph === 'TELEOP' ? { teleStrategyId: x.id } : { endgameId: x.id })}
-              className={`block w-full text-left mt-2 p-2 rounded border text-xs ${(ph === 'AUTO' ? s.strategyId : ph === 'TELEOP' ? s.teleStrategyId : s.endgameId) === x.id ? 'border-dragon-500 bg-dragon-500/10' : 'border-white/10 hover:border-white/30'}`}>
-              <div className="font-bold">{x.name}</div>
-              <div className="text-zinc-400">{x.purpose}</div>
-              <div className="font-mono mt-1">route: {x.route.join(' → ')}</div>
-              <div className="text-zinc-500">abandon: {x.abandon} · cutoff {x.cutoffSec}s · poor: {x.poorWhen}</div>
-            </button>
-          ))}
+          <div className="font-display font-bold text-lg">{ph === 'AUTO' ? 'Start (AUTO)' : ph === 'TELEOP' ? 'Main plan' : 'Finish (endgame)'}</div>
+          {list.filter((x: any) => x.phase === ph).map((x: any) => {
+            const active = (ph === 'AUTO' ? s.strategyId : ph === 'TELEOP' ? s.teleStrategyId : s.endgameId) === x.id;
+            return (
+              <button key={x.id} onClick={() => s.set(ph === 'AUTO' ? { strategyId: x.id } : ph === 'TELEOP' ? { teleStrategyId: x.id } : { endgameId: x.id })}
+                className={`block w-full text-left mt-2 p-3 rounded-xl border ${active ? 'border-dragon-500 bg-dragon-500/10' : 'border-white/10 hover:border-white/30'}`}>
+                <div className="font-bold">{active ? '✓ ' : ''}{x.name}</div>
+                <div className="text-zinc-400 text-xs mt-0.5">{x.purpose}</div>
+                {!s.simpleMode && <div className="font-mono text-[11px] mt-1 text-zinc-500">route: {x.route.join(' → ')} · poor when: {x.poorWhen}</div>}
+              </button>
+            );
+          })}
         </div>
       ))}
     </div>
