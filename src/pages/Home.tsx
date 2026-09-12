@@ -28,9 +28,9 @@ export function Home() {
       <main className="max-w-6xl mx-auto px-6 pb-16">
         <section className="panel p-8 mt-4 grid md:grid-cols-2 gap-8 items-center">
           <div>
-            <div className="label">Local-first engineering decision-support · REBUILT 2026</div>
-            <h1 className="font-display text-5xl font-bold mt-2">3D FRC robot<br />+ strategy simulator<br /><span className="text-dragon-500">for REBUILT.</span></h1>
-            <p className="mt-4 text-zinc-300">Design cycles, test paths, forecast scores with uncertainty — tuned for one team: 422 Shenron. Field truth from official FE-2026 Rev B + TU22 manual. Estimates depend on your parameters and rules version.</p>
+            <div className="eyebrow">Local-first engineering decision-support · REBUILT 2026</div>
+            <h1 className="font-display text-5xl mt-2" style={{ lineHeight: 1.0 }}><span style={{ color: '#7fee64' }}>3D FRC robot</span><br />+ strategy simulator<br />for REBUILT.</h1>
+            <p className="mt-4 lead">Design cycles, test paths, forecast scores with uncertainty — tuned for one team: 422 Shenron. Field truth from official FE-2026 Rev B + TU22 manual.</p>
             <div className="flex gap-2 mt-6">
               <button className="btn-primary" onClick={() => set({ view: 'simulate' })}>Open Simulator</button>
               <button className="btn-ghost" onClick={() => set({ view: 'field' })}>Explore Field</button>
@@ -39,7 +39,12 @@ export function Home() {
               Estimates depend on entered robot parameters and current rules/field-data version (field v1.0.0 · rules TU22). Not a competition guarantee. FIRST Chesapeake events use the AndyMark field variant.
             </div>
           </div>
-          <div className="panel p-4 font-mono text-xs leading-relaxed">
+          <div className="codewin p-0 overflow-hidden font-mono text-xs leading-relaxed">
+            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#485346]">
+              <span className="w-2 h-2 rounded-full bg-[#ff5f57]" /><span className="w-2 h-2 rounded-full bg-[#febc2e]" /><span className="w-2 h-2 rounded-full bg-[#28c840]" />
+              <span className="ml-auto text-[#9cbf93]">dragonsim — field truth</span>
+            </div>
+            <div className="p-4">
             <div className="label">Field truth snapshot (inches)</div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div>Footprint<br /><b>651.2 × 317.7</b></div>
@@ -50,6 +55,7 @@ export function Home() {
               <div>FUEL<br /><b>⌀5.91 · 0.45–0.50 lb</b></div>
             </div>
             <div className="mt-3 text-zinc-400">Scoring: active FUEL 1/1 · L1 15 AUTO · 10/20/30 TELEOP · RP 100/360/50 (regional). HUB alternates on AUTO winner.</div>
+            </div>
           </div>
         </section>
         <section className="grid md:grid-cols-3 gap-4 mt-6">

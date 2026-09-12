@@ -2,17 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  --color-void-black: #000000;
+  --color-ground-iron: #181818;
+  --color-carbon-veil: #212525;
+  --color-circuit-border: #485346;
+  --color-lime-pulse: #7fee64;
+  --color-phosphor-white: #ddffdc;
+  --color-sage-60: #8cab87;
+  font-feature-settings: 'cv11';
+}
 html, body, #root { height: 100%; }
-body { @apply bg-dragon-900 text-zinc-100 font-body; }
-.font-display { font-family: Rajdhani, system-ui, sans-serif; }
-.panel { @apply bg-dragon-800/80 border border-white/10 rounded-xl; }
-.kpi { @apply panel p-3; }
-.btn-primary { @apply bg-dragon-500 hover:bg-dragon-700 text-dragon-950 font-display font-bold px-4 py-2 rounded-lg transition; }
-.btn-ghost { @apply border border-white/15 hover:border-dragon-500/60 px-4 py-2 rounded-lg font-display font-semibold transition; }
-.label { @apply text-[11px] uppercase tracking-widest text-zinc-400; }
-input, select, textarea { @apply bg-black/40 border border-white/10 rounded px-2 py-1 text-sm; }
-input[type='range'] { @apply w-full accent-green-500; }
-table.data { @apply w-full text-sm; }
-table.data th { @apply text-left label pb-1; }
-table.data td { @apply border-t border-white/10 py-1 font-mono; }
+body {
+  background: #000000;
+  color: #8cab87;
+  font-family: Inter, system-ui, sans-serif;
+  letter-spacing: -0.022em;
+}
+h1, h2, h3, h4, .font-display {
+  font-family: 'Inter Tight', 'Space Grotesk', Inter, system-ui, sans-serif;
+  font-feature-settings: 'ss01';
+  color: #ddffdc;
+  letter-spacing: -0.012em;
+}
+/* Surfaces: void -> ground -> carbon, hairline borders, no shadows (nav only) */
+.panel { background: #181818; border: 1px solid #48534655; border-radius: 8px; }
+.kpi { @apply p-3; background: #181818; border: 1px solid #48534655; border-radius: 8px; }
+.codewin { background: #212525; border: 1px solid #485346; border-radius: 12px; }
+/* Buttons per DESIGN.md — lime pill rationed to primary only */
+.btn-primary {
+  background: #7fee64; color: #000000;
+  border-radius: 9999px; padding: 12px 24px;
+  font-weight: 500; transition: color .3s ease-out, background-color .3s ease-out, border-color .3s ease-out;
+}
+.btn-primary:hover { background: #aed2a4; }
+.btn-ghost {
+  background: transparent; color: #ddffdc;
+  border: 1px solid #ddffdc; border-radius: 12px; padding: 12px 20px; font-weight: 500;
+  transition: color .3s ease-out, background-color .3s ease-out, border-color .3s ease-out;
+}
+.btn-ghost:hover { border-color: #7fee64; color: #7fee64; }
+.eyebrow {
+  font-size: 12px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #9cbf93;
+}
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #9cbf93; }
+.lead { color: #aed2a4; }
+a { color: #859984; }
+input, select, textarea { background: #00000088; border: 1px solid #485346; border-radius: 8px; padding: 4px 8px; font-size: 14px; color: #ddffdc; }
+input[type='range'] { width: 100%; accent-color: #7fee64; }
+table.data { width: 100%; font-size: 14px; }
+table.data th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #9cbf93; padding-bottom: 4px; }
+table.data td { border-top: 1px solid #1f2a33; padding: 4px 0; font-family: 'JetBrains Mono', monospace; color: #ddffdc; }
+::selection { background: #7fee64; color: #000; }

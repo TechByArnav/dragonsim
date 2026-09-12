@@ -47,13 +47,13 @@ export function DetailedRobot({ position, alliance }: { position: [number, numbe
           ))}
           {/* intake rollers (front) */}
           <group position={[fp.x / 2 + 2, 0, 6]}>
-            <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[1.6, 1.6, fp.y - 8, 16]} /><meshStandardMaterial color="#D9A441" metalness={0.4} roughness={0.4} /></mesh>
-            <mesh position={[0, 0, 3]}><boxGeometry args={[3, fp.y - 6, 1]} /><meshStandardMaterial color="#22c55e" metalness={0.2} roughness={0.6} /></mesh>
+            <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[1.6, 1.6, fp.y - 8, 16]} /><meshStandardMaterial color="#7fee64" emissive="#1a3a1a" emissiveIntensity={0.5} metalness={0.4} roughness={0.4} /></mesh>
+            <mesh position={[0, 0, 3]}><boxGeometry args={[3, fp.y - 6, 1]} /><meshStandardMaterial color="#7fee64" metalness={0.2} roughness={0.6} /></mesh>
           </group>
           {/* shooter hood */}
           <group position={[-4, 0, 18]}>
-            <mesh castShadow><boxGeometry args={[12, 12, 6]} /><meshStandardMaterial color="#14532d" metalness={0.5} roughness={0.45} /></mesh>
-            <mesh position={[0, 0, 4.4]} rotation={[0, 0, 0.5]}><boxGeometry args={[9, 9, 1.4]} /><meshStandardMaterial color="#2BD96A" emissive="#052e16" emissiveIntensity={0.6} /></mesh>
+            <mesh castShadow><boxGeometry args={[12, 12, 6]} /><meshStandardMaterial color="#181818" metalness={0.5} roughness={0.45} /></mesh>
+            <mesh position={[0, 0, 4.4]} rotation={[0, 0, 0.5]}><boxGeometry args={[9, 9, 1.4]} /><meshStandardMaterial color="#7fee64" emissive="#1d4d1d" emissiveIntensity={0.9} /></mesh>
           </group>
           {/* climber arms */}
           <group position={[-fp.x / 2 + 4, 0, 16]}>
@@ -65,10 +65,14 @@ export function DetailedRobot({ position, alliance }: { position: [number, numbe
           <HopperFuel n={Math.min(8, Math.round((robot.storage ?? 14) / 2))} />
         </group>
       )}
-      {/* team marker */}
+      {/* team marker — 422 Mech Tech Dragons (used with permission) */}
       <mesh position={[0, 0, 30]}>
-        <planeGeometry args={[20, 6]} />
+        <planeGeometry args={[22, 7]} />
         <meshBasicMaterial color={alliance === 'red' ? '#ef4444' : '#3b82f6'} />
+      </mesh>
+      <mesh position={[0, 0, 26.5]}>
+        <boxGeometry args={[fp.x - 6, 0.6, 0.6]} />
+        <meshStandardMaterial color="#7fee64" emissive="#7fee64" emissiveIntensity={1.4} />
       </mesh>
     </group>
   );
