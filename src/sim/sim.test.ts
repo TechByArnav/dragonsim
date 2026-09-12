@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { trapezoidTime, estimateSegment } from './motion';
-import { astar, fieldGridFromConstants } from './nav';
+import { astar, clampOutOfColliders, colliderRects, fieldGridFromConstants } from './nav';
 import { scoreMatch, hubWindows, isActiveAt } from './scoring';
 import { planStrategy } from './strategy';
 import { runMonteCarlo, mulberry32 } from './montecarlo';
@@ -31,6 +31,28 @@ describe('pathfinding validity', () => {
     const bad = astar({ x: -230, y: 0 }, { x: -167.01, y: 0 }, g);
     expect(bad.reachable).toBe(false);
     expect(bad.reason).toMatch(/collision|path/i);
+  });
+  it('A* waypoints never enter hub/tower colliders and clamp rescues illegal points', () => {
+    const g = fieldGridFromConstants(8, 29);
+    const r = 14.5;
+    const insideHub = clampOutOfColliders({ x: -167.01, y: 0 }, r);
+    expect(Math.abs(insideHub.x + 167.01) > 23.5 + r - 0.5 || Math.abs(insideHub.y) > 23.5 + r - 0.5).toBe(true);
+    const legs: [{ x: number; y: number }, { x: number; y: number }][] = [
+      [{ x: -230, y: -20 }, { x: 0, y: 0 }],
+      [{ x: 0, y: 0 }, { x: -110, y: 20 }],
+      [{ x: -230, y: -20 }, { x: -280, y: 100 }],
+    ];
+    for (const [a, b] of legs) {
+      const res = astar(a, b, g);
+      expect(res.reachable).toBe(true);
+      for (const p of res.points) {
+        for (const o of colliderRects()) {
+          const inX = Math.abs(p.x - o.cx) < o.hx + 4;
+          const inY = Math.abs(p.y - o.cy) < o.hy + 4;
+          expect(inX && inY).toBe(false);
+        }
+      }
+    }
   });
 });
 

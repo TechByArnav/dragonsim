@@ -190,11 +190,23 @@ function RightPanel({ sim }: { sim: ReturnType<typeof useSim> }) {
     <div className="space-y-3 text-sm">
       {/* Step 1 */}
       <div className="kpi">
-        <div className="font-display font-bold">1 · Robot</div>
-        <select value={s.robotId} onChange={(e) => s.set({ robotId: e.target.value })} className="w-full mt-1 text-base py-1.5">
-          {allRobots().map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <div className="text-xs text-zinc-400 mt-1">{sim.robot.desc}</div>
+        <div className="flex items-center justify-between">
+          <div className="font-display font-bold">1 · Robots</div>
+          <button onClick={() => s.set({ allianceMode: !s.allianceMode })}
+            className={`text-[11px] px-2 py-1 rounded-full border font-bold ${s.allianceMode ? 'bg-[#7fee64] text-black border-[#7fee64]' : 'border-[#485346] text-[#859984]'}`}>
+            {s.allianceMode ? '3-robot alliance ON' : 'Single robot'}
+          </button>
+        </div>
+        {!s.allianceMode ? (
+          <>
+            <select value={s.robotId} onChange={(e) => s.set({ robotId: e.target.value })} className="w-full mt-1 text-base py-1.5">
+              {allRobots().map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select>
+            <div className="text-xs text-zinc-400 mt-1">{sim.robot.desc}</div>
+          </>
+        ) : (
+          <AllianceEditors />
+        )}
       </div>
       {/* Step 2 */}
       <div className="kpi">
@@ -234,12 +246,58 @@ function RightPanel({ sim }: { sim: ReturnType<typeof useSim> }) {
           <div className="text-xs text-amber-200 mt-1">⏳ {sim.scored.teleInactiveAttempted.toFixed(0)} FUEL arrived while HUB was off (0 pts) — try a different AUTO winner or depot timing.</div>
         )}
         <button onClick={() => s.set({ view: 'analytics' })} className="btn-primary w-full mt-2">See charts + export →</button>
+        <AllianceTotal sim={sim} />
         {!s.simpleMode && <Assumptions sim={sim} />}
       </div>
     </div>
   );
 }
 
+function AllianceEditors() {
+  const s = useApp();
+  const colors = ['#7fee64', '#22d3ee', '#f5c518'];
+  return (
+    <div className="space-y-1.5 mt-1">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex gap-1 items-center text-xs">
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ background: colors[i] }} />
+          <select value={s.allianceRobots[i]} onChange={(e) => {
+            const n = [...s.allianceRobots] as [string, string, string];
+            n[i] = e.target.value; s.set({ allianceRobots: n, robotId: i === 0 ? e.target.value : s.robotId });
+          }} className="flex-1 py-1">
+            {allRobots().map((x: any) => <option key={x.id} value={x.id}>R{i + 1} {x.name}</option>)}
+          </select>
+          <select value={s.allianceRoles[i]} onChange={(e) => {
+            const n = [...s.allianceRoles] as [string, string, string];
+            n[i] = e.target.value; s.set({ allianceRoles: n });
+          }} className="w-24 py-1">
+            <option value="scorer">scorer</option>
+            <option value="support">support</option>
+            <option value="climb">climb</option>
+            <option value="defense">defense</option>
+          </select>
+        </div>
+      ))}
+      <div className="text-[11px] text-zinc-500">R1 drives the playthrough trail; R2/R3 run offset lanes. Combined score below = simplified shared-HUB model.</div>
+    </div>
+  );
+}
+
+function AllianceTotal({ sim }: { sim: ReturnType<typeof useSim> }) {
+  const s = useApp();
+  if (!s.allianceMode) return null;
+  // Simplified combined model: R1 full sim + role-weighted partners - shared congestion.
+  // Labeled simplified, not a match predictor.
+  const w = s.allianceRoles.map((r) => (r === 'scorer' ? 0.85 : r === 'support' ? 0.45 : r === 'climb' ? 0.3 : 0.15));
+  const combined = sim.scored.total * (1 + w[1] + w[2]) - 6; // -6 shared-HUB congestion
+  return (
+    <div className="panel p-2 mt-2 text-xs">
+      <div className="font-display font-bold">Alliance (3 robots, simplified)</div>
+      <div className="font-mono">R1 {sim.scored.total.toFixed(0)} + R2 ~{(sim.scored.total * w[1]).toFixed(0)} + R3 ~{(sim.scored.total * w[2]).toFixed(0)} − congestion ≈ <b>{Math.max(0, combined).toFixed(0)} pts</b></div>
+      <div className="text-zinc-500">Shared HUB + lane overlap penalized. Tune roles above to test scorer/support/climb splits.</div>
+    </div>
+  );
+}
 function Assumptions({ sim }: { sim: ReturnType<typeof useSim> }) {
   const s = useApp();
   return (

@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useApp } from '../store';
-import { astar, fieldGridFromConstants } from '../sim/nav';
+import { astar, clampOutOfColliders, fieldGridFromConstants } from '../sim/nav';
 import { computeHeatmapSync } from '../sim/heatmap';
 import { PlaythroughRobot, PlaythroughControls, usePlaythrough } from './Playthrough';
 
@@ -16,7 +16,8 @@ function ClickCatcher({ onPick }: { onPick: (p: { x: number; y: number }) => voi
   return (
     <mesh position={[0, 0, -0.05]} onClick={(e) => {
       e.stopPropagation(); void ray; void plane;
-      onPick({ x: THREE.MathUtils.clamp(e.point.x, -L / 2, L / 2), y: THREE.MathUtils.clamp(e.point.y, -W / 2, W / 2) });
+      const raw = { x: THREE.MathUtils.clamp(e.point.x, -L / 2, L / 2), y: THREE.MathUtils.clamp(e.point.y, -W / 2, W / 2) };
+      onPick(clampOutOfColliders(raw)); // never place the robot inside a hub/tower
     }}>
       <planeGeometry args={[L, W]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -28,8 +29,8 @@ function Label({ pos, text }: { pos: [number, number, number]; text: string }) {
   const s = useApp();
   if (!s.labels) return null;
   return (
-    <Html distanceFactor={950} position={pos} center style={{ pointerEvents: 'none' }}>
-      <div style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,0,0,.72)', color: '#ddffdc', padding: '1px 7px', borderRadius: 6, border: '1px solid #485346', whiteSpace: 'nowrap' }}>{text}</div>
+    <Html distanceFactor={1500} position={pos} center style={{ pointerEvents: 'none' }} occlude={false}>
+      <div style={{ fontSize: 9, lineHeight: 1.2, fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,0,0,.55)', color: '#aed2a4', padding: '0px 5px', borderRadius: 5, border: '1px solid #48534688', whiteSpace: 'nowrap', opacity: 0.9 }}>{text}</div>
     </Html>
   );
 }
@@ -322,9 +323,12 @@ function CameraRig({ preset }: { preset: string }) {
   const { camera } = useThree();
   useMemo(() => {
     if (preset === 'top') camera.position.set(0, 0, 720);
-    else if (preset === 'driverBlue') camera.position.set(-360, 0, 90);
-    else if (preset === 'driverRed') camera.position.set(360, 0, 90);
-    else if (preset === 'hub') camera.position.set(-167, -160, 140);
+    else if (preset === 'side') camera.position.set(0, -560, 110);
+    else if (preset === 'end') camera.position.set(-560, 0, 150);
+    else if (preset === 'corner') camera.position.set(-380, -320, 300);
+    else if (preset === 'driverBlue') camera.position.set(-380, 0, 70);
+    else if (preset === 'driverRed') camera.position.set(380, 0, 70);
+    else if (preset === 'hub') camera.position.set(-167, -170, 130);
     else camera.position.set(0, -380, 320);
     camera.lookAt(0, 0, 0);
   }, [preset, camera]);
@@ -432,8 +436,18 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
         </mesh>
         {s.dest && <mesh position={[s.dest.x, s.dest.y, 1.5]}><sphereGeometry args={[2.4, 12, 12]} /><meshBasicMaterial color={LIME} /></mesh>}
         <Suspense fallback={null}>
-          <PlaythroughRobot t={t} />
+          <PlaythroughRobot t={t} slot={0} />
         </Suspense>
+        {s.allianceMode && (
+          <Suspense fallback={null}>
+            <PlaythroughRobot t={t} slot={1} />
+          </Suspense>
+        )}
+        {s.allianceMode && (
+          <Suspense fallback={null}>
+            <PlaythroughRobot t={t} slot={2} />
+          </Suspense>
+        )}
         <Animator setT={setT} total={total} playing={playing} speed={speed} />
         {measure.a && measure.b && (
           <group>
@@ -442,11 +456,11 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
             </lineSegments>
           </group>
         )}
-        <OrbitControls makeDefault maxPolarAngle={Math.PI / 2.05} target={[0, 0, 0]} />
+        <OrbitControls makeDefault target={[0, 0, 0]} enablePan enableRotate enableZoom minDistance={110} maxDistance={1300} maxPolarAngle={Math.PI / 2 - 0.03} />
       </Canvas>
-      {/* camera presets */}
-      <div className="absolute top-2 left-2 flex gap-1.5 text-xs flex-wrap">
-        {[['persp', '3D'], ['top', 'Top'], ['driverBlue', 'Blue DS'], ['driverRed', 'Red DS'], ['hub', 'HUB cam']].map(([id, label]) => (
+      {/* camera presets — free orbit always on: drag = orbit, right-drag = pan, wheel = zoom */}
+      <div className="absolute top-2 left-2 flex gap-1.5 text-xs flex-wrap max-w-[70%]">
+        {[['persp', '3D'], ['top', 'Top'], ['side', 'Side'], ['end', 'End'], ['corner', 'Corner'], ['driverBlue', 'Blue DS'], ['driverRed', 'Red DS'], ['hub', 'HUB']].map(([id, label]) => (
           <button key={id} onClick={() => setCam(id)} className={`px-2.5 py-1 rounded-full border font-bold ${cam === id ? 'bg-[#7fee64] text-black border-[#7fee64]' : 'border-[#485346] text-[#859984] bg-black/60'}`}>{label}</button>
         ))}
         <span className="px-2 py-1 font-mono text-[#677d64] border border-[#1f2a33] rounded-full bg-black/60">({s.origin.x.toFixed(0)}, {s.origin.y.toFixed(0)}) in</span>

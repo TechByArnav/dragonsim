@@ -30,6 +30,9 @@ export interface AppState {
   glbUrl: string | null;
   compareId: string | null;
   simpleMode: boolean;
+  allianceMode: boolean;
+  allianceRobots: [string, string, string];
+  allianceRoles: [string, string, string];
   set: (p: Partial<AppState>) => void;
   robot: () => any;
 }
@@ -60,6 +63,9 @@ export const useApp = create<AppState>((set, get) => ({
   glbUrl: null,
   compareId: null,
   simpleMode: true,
+  allianceMode: true,
+  allianceRobots: ['allrounder', 'sprinter', 'climber'],
+  allianceRoles: ['scorer', 'support', 'climb'],
   set: (p) => set(p),
   robot: () => {
     const base = (archetypes as any).archetypes.find((r: any) => r.id === get().robotId) ?? (archetypes as any).archetypes[1];

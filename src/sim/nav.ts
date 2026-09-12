@@ -4,6 +4,39 @@ export interface Rect { cx: number; cy: number; hx: number; hy: number; id?: str
 
 export function dist(a: Pt, b: Pt) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
+// Shared collider set (hubs, towers, depots, outposts) so clamping and grids agree.
+export function colliderRects(): Rect[] {
+  const hub = 47 / 2, twX = 45 / 2, twY = 49.25 / 2;
+  return [
+    { cx: -167.01, cy: 0, hx: hub, hy: hub, id: 'hubBlue' },
+    { cx: 167.01, cy: 0, hx: hub, hy: hub, id: 'hubRed' },
+    { cx: -303, cy: 0, hx: twX, hy: twY, id: 'towerBlue' },
+    { cx: 303, cy: 0, hx: twX, hy: twY, id: 'towerRed' },
+    { cx: -311, cy: 100, hx: 13.5, hy: 21, id: 'depotBlue' },
+    { cx: 311, cy: -100, hx: 13.5, hy: 21, id: 'depotRed' },
+    { cx: -300, cy: -140, hx: 20, hy: 18, id: 'outpostBlue' },
+    { cx: 300, cy: 140, hx: 20, hy: 18, id: 'outpostRed' },
+  ];
+}
+
+// Push a point outside every collider (+robot radius + margin). Never returns a point inside a hub/tower.
+export function clampOutOfColliders(p: Pt, robotRadiusIn = 14.5, marginIn = 3): Pt {
+  let { x, y } = p;
+  for (const o of colliderRects()) {
+    const ex = o.hx + robotRadiusIn + marginIn;
+    const ey = o.hy + robotRadiusIn + marginIn;
+    const dx = x - o.cx, dy = y - o.cy;
+    if (Math.abs(dx) < ex && Math.abs(dy) < ey) {
+      // push out along the smaller penetration axis
+      if (ex - Math.abs(dx) < ey - Math.abs(dy)) x = o.cx + Math.sign(dx || 1) * ex;
+      else y = o.cy + Math.sign(dy || 1) * ey;
+    }
+  }
+  x = Math.max(-325.6 + robotRadiusIn, Math.min(325.6 - robotRadiusIn, x));
+  y = Math.max(-158.85 + robotRadiusIn, Math.min(158.85 - robotRadiusIn, y));
+  return { x, y };
+}
+
 export interface GridOpts {
   cellIn: number; // e.g. 6
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
