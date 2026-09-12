@@ -20,8 +20,8 @@
       "confidence": "baseline-estimate", "source": "dragonsim-baseline"
     },
     {
-      "id": "allrounder", "name": "Balanced All-Rounder (Shenron default)",
-      "desc": "Team 422 placeholder all-rounder. Moderate speed, reliable intake/score, L2 climb target. Robust vs congestion. TUNE with Shenron measurements.",
+      "id": "allrounder", "name": "Balanced All-Rounder (Team 422 default)",
+      "desc": "Team 422 placeholder all-rounder. Moderate speed, reliable intake/score, L2 climb target. Robust vs congestion. TUNE with your robot measurements.",
       "drivetrain": "swerve", "footprintIn": { "x": 29, "y": 29 }, "clearanceIn": 3.0, "massLb": 114,
       "vmaxInPerSec": 145, "amaxInPerSec2": 110, "brakeInPerSec2": 130, "omegaDegPerSec": 320, "turnAccelDegPerSec2": 640,
       "maneuver": 0.8, "batteryDerate": 0.93, "traction": 1.0,
@@ -31,7 +31,7 @@
       "jamProb": 0.015, "cycleReliability": 0.95,
       "climb": { "levels": [1, 2], "setupSec": 10, "pSuccess": 0.85 },
       "mechRisk": 0.2, "driverMod": 1.0, "autoCompat": ["preload-score", "safe-retreat", "multi-collect"],
-      "confidence": "user-entered-placeholder", "source": "team422-shenron-placeholder"
+      "confidence": "baseline-estimate", "source": "team422-placeholder"
     },
     {
       "id": "hauler", "name": "High-Capacity Cycler",

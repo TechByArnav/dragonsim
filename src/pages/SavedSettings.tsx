@@ -10,7 +10,7 @@ export function SavedView({ sim }: { sim: ReturnType<typeof useSim> }) {
   useEffect(() => { refresh(); }, []);
   const snapshot = () => ({
     id: `scenario-${Date.now()}`,
-    team: '422-shenron',
+    team: '422',
     robotId: s.robotId, robot: s.robot(), overrides: s.robotOverrides,
     alliance: s.alliance, autoWinner: s.autoWinner, tele: s.teleStrategyId, endgame: s.endgameId,
     origin: s.origin, dest: s.dest, congestion: s.congestion, defense: s.defense, zone: s.zone,

@@ -13,7 +13,7 @@ npm run test && npm run lint && npm run typecheck
 - Inches in data/sim; metric display only. Cite source + confidence on every number (`confirmed` / `estimated` / `user-entered` / `unknown` + `needsVerification`).
 - Official FIRST docs win. Third-party video = `speculative`. Never present guesses as guarantees; show ranges.
 - Keep `Context/` binaries out of git. Link annotations instead of copying assets.
-- One robot (Shenron) focus; alliance features stay deferred unless explicitly re-scoped.
+- Single-team focus; keep estimates labeled, never presented as guarantees.
 - Match repo style: Zustand store, pure sim functions with tests, Tailwind panels, R3F scene pieces.
 
 ## Adding data

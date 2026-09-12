@@ -28,7 +28,7 @@ export function ContextView() {
     <div className="p-4 space-y-3 overflow-y-auto">
       <div className="panel p-3 text-sm">
         <div className="font-display font-bold text-lg">Context Library — traceability</div>
-        <div className="text-zinc-400 text-xs">Local Context/ assets. No team prototype media detected — archetypes are baselines until you link Shenron evidence. Never claim vision-derived dims as exact without calibrated scale reference.</div>
+        <div className="text-zinc-400 text-xs">Local Context/ assets. No team prototype media detected — archetypes are baselines until you link your robot evidence. Never claim vision-derived dims as exact without calibrated scale reference.</div>
         <div className="flex gap-2 mt-2 text-xs">
           {['all', 'field', 'rules', 'strategy', 'measurement', 'cad', 'mechanism'].map((t) => (
             <button key={t} onClick={() => setFilter(t)} className={`px-2 py-1 rounded border ${filter === t ? 'border-dragon-500 bg-dragon-500/10' : 'border-white/10'}`}>{t}</button>
@@ -59,7 +59,7 @@ function ReviewScreen() {
   return (
     <div className="panel p-3 text-sm">
       <div className="font-display font-bold">Review: confirm / edit / reject prototype assumptions</div>
-      <div className="text-xs text-zinc-400">Single-team mode: only Shenron placeholder exists. Every override below is user-entered until linked to a frame/image/diagram above.</div>
+      <div className="text-xs text-zinc-400">Single-team mode: only the team placeholder exists. Every override below is user-entered until linked to a frame/image/diagram above.</div>
       <table className="data mt-2">
         <thead><tr><th>Parameter</th><th>Value</th><th>Source</th><th>Confidence</th></tr></thead>
         <tbody>

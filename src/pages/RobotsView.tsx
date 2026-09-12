@@ -21,7 +21,7 @@ export function RobotsView() {
   return (
     <div className="p-4 grid lg:grid-cols-3 gap-4 overflow-y-auto">
       <div className="panel p-3">
-        <div className="label">Single-team library (6 archetypes + Shenron placeholder)</div>
+        <div className="label">Single-team library (6 archetypes + team placeholder)</div>
         {allRobots().map((r: any) => (
           <button key={r.id} onClick={() => s.set({ robotId: r.id })}
             className={`block w-full text-left p-2 mt-2 rounded border text-xs ${s.robotId === r.id ? 'border-dragon-500 bg-dragon-500/10' : 'border-white/10'}`}>
@@ -42,7 +42,7 @@ export function RobotsView() {
       </div>
       <div className="panel p-3 lg:col-span-2">
         <div className="font-display font-bold text-xl">{robot.name} — editable spec</div>
-        <div className="text-xs text-amber-200/80">Baseline engineering estimates. Mark provenance; nothing here is a measured Shenron fact until you enter it.</div>
+        <div className="text-xs text-amber-200/80">Baseline engineering estimates. Mark provenance; nothing here is a measured team fact until you enter it.</div>
         <div className="grid md:grid-cols-2 gap-x-6 mt-2">
           {NUM_FIELDS.map((f) => (
             <label key={f.key} className="text-xs block mt-2">

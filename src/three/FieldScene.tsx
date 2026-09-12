@@ -32,8 +32,8 @@ function Label({ pos, text, major }: { pos: [number, number, number]; text: stri
   if (!s.labels) return null;
   if (s.simpleMode && !major && !s.debug) return null;
   return (
-    <Html distanceFactor={1900} position={pos} center style={{ pointerEvents: 'none' }} occlude={false} zIndexRange={[5, 0]}>
-      <div style={{ fontSize: 8, lineHeight: 1.2, fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,0,0,.42)', color: '#677d64', padding: '0px 4px', borderRadius: 4, border: '1px solid #48534655', whiteSpace: 'nowrap', opacity: 0.85 }}>{text}</div>
+    <Html distanceFactor={420} position={pos} center style={{ pointerEvents: 'none' }} occlude={false} zIndexRange={[5, 0]}>
+      <div style={{ fontSize: 10, lineHeight: 1.2, fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,0,0,.42)', color: '#677d64', padding: '0px 4px', borderRadius: 4, border: '1px solid #48534655', whiteSpace: 'nowrap', opacity: 0.85 }}>{text}</div>
     </Html>
   );
 }
@@ -404,8 +404,8 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
         <mesh position={[-167.01, 0, 0.32]}><planeGeometry args={[2.5, W]} /><meshBasicMaterial color="#3b82f6" /></mesh>
         <mesh position={[167.01, 0, 0.32]}><planeGeometry args={[2.5, W]} /><meshBasicMaterial color="#ef4444" /></mesh>
         {/* HUBs */}
-        <Hub x={-167.01} alliance="blue" label="BLUE HUB · 47×47 · ⌀41.7 @72" />
-        <Hub x={167.01} alliance="red" label="RED HUB · 47×47 · ⌀41.7 @72" />
+        <Hub x={-167.01} alliance="blue" label="BLUE HUB · 47×47" />
+        <Hub x={167.01} alliance="red" label="RED HUB · 47×47" />
         {/* BUMPs */}
         <Bump x={-167.01} y={-70} color="#274bdb" />
         <Bump x={-167.01} y={70} color="#274bdb" />

@@ -2,12 +2,9 @@
 
 Independent, unofficial, local-first engineering decision-support tool built for **FRC Team 422 — Mech Tech Dragons** (Maggie L. Walker Governor's School, Richmond VA). Not affiliated with or endorsed by FIRST.
 
-![placeholder: homepage screenshot](docs/screenshots/home.png)
-![placeholder: simulator screenshot](docs/screenshots/sim.png)
-
 ## Features
 - Dimensionally grounded 3D REBUILT field (651.2×317.7 in, HUB/BUMP/TRENCH/TOWER/DEPOT/OUTPOST, AprilTag-aware layout)
-- 6 editable robot archetypes + single-team Shenron placeholder; detailed procedural robot + optional GLB import
+- 6 editable robot archetypes + single-team placeholder; detailed procedural robot + optional GLB import
 - Trapezoidal motion model, A* pathfinding, click-to-time, 6-mode travel-time heatmaps
 - AUTO/TELEOP/Endgame strategy presets with **active-HUB gating** (inactive FUEL = 0 pts + visible lost time)
 - Transparent scoring (1pt active FUEL, 15 AUTO L1, 10/20/30 TELEOP, RP 100/360/50) + best/expected/conservative ranges
@@ -43,7 +40,7 @@ In-app **Context Library** catalogs, tags (field/rules/strategy/measurement/cad/
 - Update path: drop new manual/drawings in `Context/`, bump `data/field/*.field.json` + `data/rules/*.rules.json` versions, re-run tests.
 
 ## Add a prototype robot / archetype / strategy
-- Prototype (single-team): Robots → tune Shenron placeholder → annotate source frame in Context Library → Save Scenario. Confidence flips from `baseline-estimate` to `user-entered`.
+- Prototype (single-team): Robots → tune the team placeholder → annotate source frame in Context Library → Save Scenario. Confidence flips from `baseline-estimate` to `user-entered`.
 - Archetype: edit `data/robots/archetypes.json` (schema in IMPLEMENTATION.md).
 - Strategy: edit `data/strategies/presets.json` (purpose/route/acquire/abandon/cutoff/poor/robots).
 

@@ -134,9 +134,9 @@ export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) 
         <ringGeometry args={[16, 18.5, 40]} />
         <meshBasicMaterial color={color} transparent opacity={0.45} side={THREE.DoubleSide} />
       </mesh>
-      {/* floating name pill — follows this robot */}
-      <Html position={[0, 0, 40]} center distanceFactor={1400} style={{ pointerEvents: 'none' }}>
-        <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#000', background: color, padding: '2px 10px', borderRadius: 9999, whiteSpace: 'nowrap', border: '2px solid #00000088' }}>
+      {/* floating name pill — small, floats above this robot */}
+      <Html position={[0, 0, 48]} center distanceFactor={420} style={{ pointerEvents: 'none' }} zIndexRange={[10, 0]}>
+        <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#000', background: color, padding: '2px 8px', borderRadius: 9999, whiteSpace: 'nowrap', border: '2px solid #00000088' }}>
           R{slot + 1} · {shortName}
         </div>
       </Html>

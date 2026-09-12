@@ -2,7 +2,7 @@ import { useApp } from '../store';
 
 const FEATURES = [
   { t: '3D Field Analysis', d: 'Dimensionally grounded REBUILT field (651.2×317.7 in), HUB/BUMP/TRENCH/TOWER/DEPOT/OUTPOST with inspectable coordinates, debug collision volumes, and measure tool.' },
-  { t: 'Robot Archetypes + Prototype Models', d: '6 editable archetypes plus single-team Shenron placeholder. Detailed procedural robot + optional GLB import. Every number carries source/confidence.' },
+  { t: 'Robot Archetypes + Prototype Models', d: '6 editable archetypes plus single-team placeholder. Detailed procedural robot + optional GLB import. Every number carries source/confidence.' },
   { t: 'Cycle-Time & Path Planning', d: 'Trapezoidal motion (never d/vmax), A* around obstacles, click-to-time, travel-time heatmaps in 6 modes.' },
   { t: 'Single-Robot Strategy', d: 'AUTO + TELEOP + Endgame presets with active-HUB gating. Inactive-HUB attempts score 0 and show lost time. Alliance sim deferred by design.' },
   { t: 'Heatmaps & Scoring Forecasts', d: 'Best/expected/conservative ranges, seeded Monte Carlo distributions, sensitivity, RP progress (100/360/50) — never guarantees.' },
@@ -30,7 +30,7 @@ export function Home() {
           <div>
             <div className="eyebrow">Local-first engineering decision-support · REBUILT 2026</div>
             <h1 className="font-display text-5xl mt-2" style={{ lineHeight: 1.0 }}><span style={{ color: '#7fee64' }}>3D FRC robot</span><br />+ strategy simulator<br />for REBUILT.</h1>
-            <p className="mt-4 lead">Design cycles, test paths, forecast scores with uncertainty — tuned for one team: 422 Shenron. Field truth from official FE-2026 Rev B + TU22 manual.</p>
+            <p className="mt-4 lead">Design cycles, test paths, forecast scores with uncertainty — tuned for one team: 422. Field truth from official FE-2026 Rev B + TU22 manual.</p>
             <div className="flex gap-2 mt-6">
               <button className="btn-primary" onClick={() => set({ view: 'simulate' })}>Open Simulator</button>
               <button className="btn-ghost" onClick={() => set({ view: 'field' })}>Explore Field</button>

@@ -81,7 +81,7 @@ export function Workspace() {
           <img src="./dragon.svg" className="w-7 h-7" alt="home" />
           <span className="font-display font-bold text-lg">DragonSim</span>
         </button>
-        <span className="text-xs text-zinc-400 hidden md:inline">Team 422 Shenron · REBUILT</span>
+        <span className="text-xs text-zinc-400 hidden md:inline">Team 422 · REBUILT</span>
         <span className="ml-auto" />
         <label className="text-xs flex items-center gap-1">Alliance
           <select value={s.alliance} onChange={(e) => s.set({ alliance: e.target.value as any })}>
