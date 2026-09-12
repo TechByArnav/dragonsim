@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useApp } from '../store';
 import { astar, clampOutOfColliders, fieldGridFromConstants } from '../sim/nav';
 import { computeHeatmapSync } from '../sim/heatmap';
-import { PlaythroughRobot, PlaythroughTrail, PlaythroughControls, usePlaythrough } from './Playthrough';
+import { PlaythroughRobot, PlaythroughTrail, ShotBursts, PlaythroughControls, usePlaythrough } from './Playthrough';
 
 const L = 651.2, W = 317.7;
 const LIME = '#7fee64';
@@ -344,7 +344,7 @@ function Animator({ playing, speed, total, setT }: { playing: boolean; speed: nu
   useEffect(() => {
     if (!playing) return;
     const id = setInterval(() => setT((prev) => {
-      const nt = prev + 0.12 * speed;
+      const nt = prev + 0.1 * speed;
       return nt >= total ? total : nt;
     }), 100);
     return () => clearInterval(id);
@@ -356,7 +356,7 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
   const s = useApp();
   const [cam, setCam] = useState('persp');
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(4);
   const [t, setT] = useState(0);
   const { total } = usePlaythrough();
   useEffect(() => { if (t >= total && playing) setPlaying(false); }, [t, total, playing]);
@@ -364,7 +364,8 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
 
   return (
     <div className="relative h-full w-full bg-black">
-      <Canvas shadows camera={{ position: [0, -380, 320], fov: 45 }} dpr={[1, s.debug ? 1 : 2]}>
+      <Canvas shadows camera={{ position: [0, -380, 320], fov: 45, up: [0, 0, 1] }} dpr={[1, s.debug ? 1 : 2]}
+        onCreated={({ camera }) => { camera.up.set(0, 0, 1); camera.lookAt(0, 0, 0); }}>
         <color attach="background" args={['#000000']} />
         <fog attach="fog" args={['#000000', 900, 1600]} />
         <hemisphereLight args={['#ddffdc', '#0a0f0c', 0.5]} />
@@ -382,7 +383,7 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
           <boxGeometry args={[L, W, 0.5]} />
           <meshStandardMaterial color="#101915" roughness={0.96} />
         </mesh>
-        <Grid position={[0, 0, 0.3]} args={[L, W]} cellSize={24} cellColor="#1f2a33" sectionSize={120} sectionColor="#485346" fadeDistance={1500} infiniteGrid={false} />
+        <Grid position={[0, 0, 0.3]} rotation={[-Math.PI / 2, 0, 0]} args={[L, W]} cellSize={24} cellColor="#1f2a33" sectionSize={120} sectionColor="#485346" fadeDistance={1500} infiniteGrid={false} />
         {/* guardrails: polycarbonate + extrusion */}
         {[-W / 2, W / 2].map((y) => (
           <group key={y} position={[0, y, 10]}>
@@ -456,6 +457,9 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
         <PlaythroughTrail slot={0} />
         {s.allianceMode && <PlaythroughTrail slot={1} />}
         {s.allianceMode && <PlaythroughTrail slot={2} />}
+        <ShotBursts t={t} slot={0} />
+        {s.allianceMode && <ShotBursts t={t} slot={1} />}
+        {s.allianceMode && <ShotBursts t={t} slot={2} />}
         <Animator setT={setT} total={total} playing={playing} speed={speed} />
         {measure.a && measure.b && (
           <group>

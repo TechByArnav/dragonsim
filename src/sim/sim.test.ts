@@ -4,6 +4,7 @@ import { astar, clampOutOfColliders, colliderRects, fieldGridFromConstants } fro
 import { scoreMatch, hubWindows, isActiveAt } from './scoring';
 import { planStrategy } from './strategy';
 import { runMonteCarlo, mulberry32 } from './montecarlo';
+import { shotHit, jamThisCycle, hash01 } from './shots';
 import archetypes from '../../data/robots/archetypes.json';
 
 describe('motion profiles', () => {
@@ -75,8 +76,7 @@ describe('HUB scoring logic', () => {
     expect(s.teleInactiveAttempted).toBeCloseTo(10, 5);
     expect(s.fuelPoints).toBeCloseTo(16, 5);
   });
-  it('tower values: 15 AUTO L1, 10/20/30 TELEOP', () => {
-    const a = scoreMatch({ alliance: 'blue', autoWinner: 'blue', autoFuel: 0, cycles: [], accuracy: { close: 1, mid: 1, long: 1 }, jamLoss: 0, climb: { level: 1, period: 'AUTO' } });
+  it('tower values: 15 AUTO L1, 10/20/30 TELEOP', () => {    const a = scoreMatch({ alliance: 'blue', autoWinner: 'blue', autoFuel: 0, cycles: [], accuracy: { close: 1, mid: 1, long: 1 }, jamLoss: 0, climb: { level: 1, period: 'AUTO' } });
     expect(a.towerPoints).toBe(15);
     const t = scoreMatch({ alliance: 'blue', autoWinner: 'blue', autoFuel: 0, cycles: [], accuracy: { close: 1, mid: 1, long: 1 }, jamLoss: 0, climb: { level: 3, period: 'TELEOP' } });
     expect(t.towerPoints).toBe(30);
@@ -99,6 +99,26 @@ describe('strategy + monte carlo', () => {
     expect(a.p10).toBeLessThanOrEqual(a.p50);
     expect(a.p50).toBeLessThanOrEqual(a.p90);
     expect(mulberry32(7)()).not.toBe(mulberry32(8)());
+  });
+});
+
+describe('deterministic shot/jam outcomes', () => {
+  it('is stable for the same inputs', () => {
+    expect(shotHit(3, 1, 0.8)).toBe(shotHit(3, 1, 0.8));
+    expect(jamThisCycle(3, 1, 0.05)).toBe(jamThisCycle(3, 1, 0.05));
+    expect(hash01(42)).toBeGreaterThanOrEqual(0);
+    expect(hash01(42)).toBeLessThan(1);
+  });
+  it('perfect and zero accuracy are absolute', () => {
+    expect(shotHit(0, 0, 1)).toBe(true);
+    expect(shotHit(0, 0, 0)).toBe(false);
+    expect(jamThisCycle(0, 0, 0)).toBe(false);
+  });
+  it('hit rate tracks accuracy over many cycles', () => {
+    let hits = 0;
+    for (let c = 0; c < 500; c++) if (shotHit(c, 0, 0.8)) hits++;
+    expect(hits).toBeGreaterThan(340);
+    expect(hits).toBeLessThan(460);
   });
 });
 

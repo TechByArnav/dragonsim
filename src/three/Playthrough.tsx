@@ -1,12 +1,18 @@
 import { useMemo, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useApp, allStrategies, allRobots } from '../store';
-import { planStrategy } from '../sim/strategy';
 import { isActiveAt, hubWindows } from '../sim/scoring';
+import { shotHit, jamThisCycle } from '../sim/shots';
+import { estimateSegment } from '../sim/motion';
 import { astar, clampOutOfColliders, fieldGridFromConstants } from '../sim/nav';
 import { DetailedRobot } from './DetailedRobot';
+
+// Full-match clock: AUTO 0-20, TRANSITION 20-30, S1-S4 30-130, ENDGAME 130-160.
+// The playthrough visualizes the same model as the score panel, on real seconds.
+export const MATCH_LEN = 160;
 
 const PTS: Record<string, { x: number; y: number }> = {
   neutralCenter: { x: 0, y: 0 }, hubScore: { x: -110, y: 20 },
@@ -19,63 +25,77 @@ const PTS: Record<string, { x: number; y: number }> = {
 };
 
 export const SLOT_COLORS = ['#7fee64', '#22d3ee', '#f5c518'];
+// Per-slot anchor fan: robots aim at different patches of the same areas.
+const SLOT_ANCHOR = [{ x: 0, y: 0 }, { x: -18, y: -36 }, { x: 18, y: 36 }];
+// Lateral lane offset while traveling so trails don't paint over each other.
 const SLOT_OFFSET = [0, 16, -16];
+
+export function phaseAt(t: number): string {
+  if (t < 20) return 'AUTO';
+  if (t < 30) return 'TRANS';
+  if (t < 55) return 'S1';
+  if (t < 80) return 'S2';
+  if (t < 105) return 'S3';
+  if (t < 130) return 'S4';
+  return 'END';
+}
 
 function robotSpecById(id: string) {
   const all = allRobots() as any[];
   return all.find((r) => r.id === id) ?? all[1];
 }
 
-// Expand waypoint names into a dense, collision-free polyline via A*.
-// Each robot slot gets a lateral lane offset so 3 robots don't stack.
+type DensePt = { x: number; y: number; t: number; label: string; active: boolean; carry: number; hd: number };
+
 export function usePlaythrough(slot = 0) {
   const s = useApp();
   return useMemo(() => {
     const ids = s.allianceMode ? s.allianceRobots : [s.robotId, s.robotId, s.robotId];
     const rid = ids[Math.min(slot, ids.length - 1)] ?? s.robotId;
     const robot = { ...robotSpecById(rid), ...((slot === 0 ? s.robotOverrides : {}) as object) };
+    const R: any = robot;
     const tele = allStrategies().find((x: any) => x.id === s.teleStrategyId) ?? allStrategies()[4];
-    const plan = planStrategy(robot, tele, {
-      alliance: s.alliance, autoWinner: s.autoWinner, teleopBudgetSec: 140,
-      endgameCutoffSec: s.endgameId === 'end-skip' ? 0 : 12,
-      congestionSec: s.congestion + (s.allianceMode ? 0.5 : 0), defenseSec: s.defense, zone: s.zone, climbLevel: s.climbLevel,
-    });
+    const seq = ((tele as any).route?.length ? (tele as any).route : ['neutralCenter', 'hubScore'])
+      .map((n: string) => (n === 'hubScore' || n === 'shoot' || n === 'repeat' ? 'neutralCenter' : n));
+    const role = s.allianceMode ? s.allianceRoles[Math.min(slot, 2)] : 'scorer';
     const windows = hubWindows(s.alliance, s.autoWinner);
     const grid = fieldGridFromConstants(s.gridIn, 29);
+    const anchor = SLOT_ANCHOR[Math.min(slot, 2)] ?? { x: 0, y: 0 };
     const lane = SLOT_OFFSET[Math.min(slot, 2)] ?? 0;
-
-    const names: { name: string; label: string; active: boolean }[] = [];
-    const seq = (tele as any).route?.length ? (tele as any).route : ['neutralCenter', 'hubScore'];
-    const startSafe = clampOutOfColliders({ x: s.origin.x + lane * 0.4, y: s.origin.y + lane });
-    names.push({ name: '__start__', label: `R${slot + 1} Start — rollout`, active: true });
-    const cycles = Math.min(5, Math.max(2, plan.cycles));
-    for (let c = 0; c < cycles; c++) {
-      // support/climb roles do fewer scoring runs: hold lanes instead of forcing HUB
-      const role = s.allianceMode ? s.allianceRoles[Math.min(slot, 2)] : 'scorer';
-      const cName = role === 'climb' && c >= 2 ? 'towerApproach' : role === 'support' && c % 2 === 1 ? 'corral' : seq[c % seq.length] ?? 'neutralCenter';
-      names.push({ name: cName, label: `R${slot + 1} Collect ${c + 1}`, active: true });
-      const scoreT = 20 + c * 16;
-      const active = isActiveAt(scoreT, windows);
-      names.push({ name: 'hubScore', label: active ? `R${slot + 1} Score ${c + 1} ✓` : `R${slot + 1} Hold ${c + 1} — HUB off`, active });
-    }
-    if (s.climbLevel > 0 && (slot === 0 || (s.allianceMode && s.allianceRoles[slot] === 'climb'))) {
-      names.push({ name: 'towerApproach', label: `R${slot + 1} Climb L${s.climbLevel}`, active: true });
-    }
-
-    // Expand legs through A* so robots drive AROUND hubs/towers — never through.
-    const dense: { x: number; y: number; t: number; label: string; active: boolean }[] = [];
-    let cursor = startSafe;
-    let t = 0;
-    const pushPt = (x: number, y: number, label: string, active: boolean, dt: number) => {
-      t += dt;
-      dense.push({ x, y, t, label, active });
+    const at = (n: string) => {
+      const p = PTS[n] ?? PTS.neutralCenter;
+      const m = s.alliance === 'blue' ? { x: p.x, y: p.y } : { x: -p.x, y: -p.y };
+      return clampOutOfColliders({ x: m.x + anchor.x, y: m.y + anchor.y });
     };
-    pushPt(cursor.x, cursor.y, names[0].label, true, 0.01);
-    for (let i = 1; i < names.length; i++) {
-      const target = names[i].name === '__start__' ? startSafe : clampOutOfColliders(PTS[names[i].name] ?? PTS.neutralCenter);
+    const hubX = s.alliance === 'blue' ? -167.01 : 167.01;
+    const acc = R.accuracy?.[s.zone] ?? 0.8;
+    const accClose = R.accuracy?.close ?? 0.85;
+    const intake = Math.max(R.intakeRatePerSec ?? 1.5, 0.2);
+    const release = Math.max(R.releaseRatePerSec ?? 1.8, 0.2);
+    const carryN = Math.min(R.storage ?? 14, 8 + Math.round(intake * 3));
+    const autoFuel = Math.round(8 * accClose);
+    const mp = {
+      vmaxInPerSec: R.vmaxInPerSec, amaxInPerSec2: R.amaxInPerSec2,
+      brakeInPerSec2: R.brakeInPerSec2, omegaDegPerSec: R.omegaDegPerSec,
+      turnAccelDegPerSec2: R.turnAccelDegPerSec2, batteryDerate: R.batteryDerate ?? 1,
+      congestionSec: s.congestion, defenseSec: s.defense, driverNoise: 0.06,
+      curvatureFactor: 0.12 + (1 - (R.maneuver ?? 0.75)) * 0.15,
+    };
+
+    const dense: DensePt[] = [];
+    const shots: { t: number; x: number; y: number; hit: boolean; fuel: number }[] = [];
+    const pickups: { t: number; x: number; y: number; jam: boolean }[] = [];
+    let t = 0;
+    let hd = 0;
+    let cursor = clampOutOfColliders({ x: s.origin.x + anchor.x, y: s.origin.y + anchor.y });
+
+    // Drive a leg with REAL motion-model seconds, distributed by distance.
+    const driveTo = (target: { x: number; y: number }, label: string, active: boolean, carry: number) => {
       const leg = astar(cursor, target, grid);
-      const pts = leg.reachable ? leg.points : [cursor, target];
-      // lateral lane offset on intermediate points only (keeps collect/score exact)
+      const pts = leg.reachable && leg.points.length > 1 ? leg.points : [cursor, target];
+      const segLens = pts.map((p, k) => (k ? Math.hypot(p.x - pts[k - 1].x, p.y - pts[k - 1].y) : 0));
+      const totalLen = segLens.reduce((a, b) => a + b, 0);
+      const legT = totalLen < 1 ? 0.1 : estimateSegment(totalLen, 40, mp).realisticSec;
       for (let k = 1; k < pts.length; k++) {
         const p = pts[k];
         const prev = pts[k - 1];
@@ -83,16 +103,98 @@ export function usePlaythrough(slot = 0) {
         const len = Math.hypot(dx, dy) || 1;
         const isEnd = k === pts.length - 1;
         const off = isEnd ? 0 : lane;
-        const ox = p.x + (-dy / len) * off;
-        const oy = p.y + (dx / len) * off;
-        const safe = clampOutOfColliders({ x: ox, y: oy });
-        const segLen = Math.hypot(safe.x - (dense.length ? dense[dense.length - 1].x : cursor.x), safe.y - (dense.length ? dense[dense.length - 1].y : cursor.y));
-        pushPt(safe.x, safe.y, i === names.length - 1 || k === pts.length - 1 ? names[i].label : '', names[i].active, 0.12 + segLen / 260);
+        const safe = clampOutOfColliders({ x: p.x + (-dy / len) * off, y: p.y + (dx / len) * off });
+        hd = Math.atan2(safe.y - prev.y, safe.x - prev.x) || hd;
+        const dt = Math.max(0.05, legT * (segLens[k] / Math.max(totalLen, 0.001)));
+        t += dt;
+        dense.push({ x: safe.x, y: safe.y, t, label: isEnd ? label : '', active, carry, hd });
       }
-      cursor = target;
+      cursor = { x: target.x, y: target.y };
+    };
+    // Dwell in place (intake spin-up, shooting, holds, climb).
+    const dwell = (secs: number, label: string, active: boolean, carry: number) => {
+      if (secs <= 0.05) return;
+      t += secs;
+      dense.push({ x: cursor.x, y: cursor.y, t, label, active, carry, hd });
+    };
+    const nextActiveStart = (now: number) => {
+      for (const w of windows.active) if (w.start > now + 0.5) return w.start;
+      return -1;
+    };
+
+    dense.push({ x: cursor.x, y: cursor.y, t: 0, label: `R${slot + 1} Start — AUTO rollout`, active: true, carry: 0, hd: 0 });
+
+    // ---- AUTO 0-20: preloads to the (always active) HUB, then stage ----
+    const hubPt = at('hubScore');
+    driveTo(hubPt, '', true, 0);
+    if (t < 14) {
+      const st = t;
+      dwell(2.5, `R${slot + 1} AUTO score ✓`, true, 0);
+      if (st <= 19) shots.push({ t: st + 0.4, x: cursor.x, y: cursor.y, hit: hash01slot(slot, accClose), fuel: autoFuel });
     }
-    return { path: dense, total: t + 1, teleName: (tele as any).name, robotName: (robot as any).name };
+    const stage = at('neutralCenter');
+    if (t < 15) driveTo(stage, '', true, 0);
+    if (t < 20) dwell(20 - t, 'AUTO end — teleop soon', true, 0);
+
+    // ---- TELEOP 20-160 ----
+    const cutoff = s.endgameId === 'end-skip' ? 0 : s.endgameId === 'end-late' ? 12 : 30;
+    const cycles = Math.max(2, Math.min(7, Math.round((140 - cutoff - 6) / 20)));
+    const collectDwell = Math.min(carryN / intake * (1 + (R.intakeFail ?? 0.07) * 2), 9);
+    const scoreDwell = Math.min((R.spinUpSec ?? 0.6) + carryN / release, 7);
+    const wantsClimb = s.climbLevel > 0 && (slot === 0 || (s.allianceMode && (role === 'climb' || role === 'scorer')));
+    let c = 0;
+
+    for (; c < cycles; c++) {
+      if (t > 148) break;
+      if (role === 'climb' && c >= 2) break; // head for the tower early
+      if (role === 'support') {
+        driveTo(at('depotApproach'), `R${slot + 1} Collect ${c + 1}`, true, 0);
+        dwell(collectDwell * 0.7, '', true, 1);
+        driveTo(at('corral'), `R${slot + 1} Feed ${c + 1}`, true, 1);
+        dwell(2, '', true, 0);
+        if (t <= 159) pickups.push({ t, x: cursor.x, y: cursor.y, jam: false });
+        continue;
+      }
+      if (role === 'defense') {
+        driveTo(at(c % 2 ? 'neutralCenter' : 'lane-block'), `R${slot + 1} Patrol`, true, 0);
+        dwell(3, '', true, 0);
+        continue;
+      }
+      // scorer / climb-early: neutral collect → HUB score
+      const target = at(seq[c % seq.length] ?? 'neutralCenter');
+      driveTo(target, '', true, 0);
+      const jam = jamThisCycle(c, slot, R.jamProb ?? 0.02);
+      dwell(collectDwell * (jam ? 1.8 : 1), jam ? `R${slot + 1} JAM — clearing` : `R${slot + 1} Collect ${c + 1}`, true, 1);
+      if (t <= 159) pickups.push({ t, x: cursor.x, y: cursor.y, jam });
+      driveTo(at('hubScore'), '', true, 1);
+      if (!isActiveAt(t, windows)) {
+        const ns = nextActiveStart(t);
+        const holdT = ns < 0 ? 3 : Math.min(ns - t, 15);
+        dwell(holdT, `R${slot + 1} Hold — HUB off`, false, 1);
+      }
+      const hit = shotHit(c, slot, acc);
+      dwell(scoreDwell, `R${slot + 1} Score ${c + 1} ✓`, true, 0);
+      if (t <= 159.5) shots.push({ t: t - scoreDwell * 0.5, x: cursor.x, y: cursor.y, hit, fuel: hit ? carryN : 0 });
+    }
+
+    // ---- ENDGAME: climb or one last cycle ----
+    if (wantsClimb && s.climbLevel > 0) {
+      driveTo(at('towerApproach'), `R${slot + 1} Climb L${s.climbLevel}`, true, 0);
+      dwell(Math.min(R.climb?.setupSec ?? 8, 9), '', true, 0);
+    }
+    if (t < MATCH_LEN) dwell(MATCH_LEN - t, 'Match end', isActiveAt(MATCH_LEN - 0.5, windows), 0);
+
+    return {
+      path: dense, shots, pickups, hubX, windows, total: MATCH_LEN,
+      teleName: (tele as any).name, robotName: (robot as any).name,
+    };
   }, [s.allianceMode, s.allianceRobots, s.allianceRoles, s.robotId, s.robotOverrides, s.teleStrategyId, s.alliance, s.autoWinner, s.zone, s.climbLevel, s.endgameId, s.congestion, s.defense, s.origin.x, s.origin.y, s.gridIn, slot]);
+}
+
+// Deterministic AUTO conversion (stable while scrubbing).
+function hash01slot(slot: number, acc: number): boolean {
+  const v = Math.sin(slot * 91.7 + 3.3) * 43758.5453;
+  return v - Math.floor(v) < acc;
 }
 
 export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) {
@@ -100,7 +202,7 @@ export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) 
   const s = useApp();
   const ref = useRef<THREE.Group>(null);
   const pos = useMemo(() => {
-    if (!path.length) return { x: s.origin.x, y: s.origin.y, heading: 0, idx: 0 };
+    if (!path.length) return { x: s.origin.x, y: s.origin.y, heading: 0, idx: 0, carry: 0 };
     const clamped = Math.max(0, Math.min(t, path[path.length - 1].t));
     let i = 0;
     while (i < path.length - 2 && path[i + 1].t <= clamped) i++;
@@ -110,7 +212,8 @@ export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) 
     const e = f * f * (3 - 2 * f);
     return {
       x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e,
-      heading: Math.atan2(b.y - a.y, b.x - a.x) || 0, idx: i,
+      heading: b.hd || a.hd || 0, idx: i,
+      carry: f < 0.85 ? a.carry : b.carry,
     };
   }, [t, path, s.origin.x, s.origin.y]);
 
@@ -121,15 +224,11 @@ export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) 
     }
   });
   const color = SLOT_COLORS[slot % 3];
-  const trail = useMemo(() => {
-    if (path.length < 2) return null;
-    return new THREE.BufferGeometry().setFromPoints(path.map((p) => new THREE.Vector3(p.x, p.y, 1.1)));
-  }, [path]);
   const shortName = String(robotName ?? '').split(' ')[0] ?? `R${slot + 1}`;
 
   return (
     <group ref={ref} position={[pos.x, pos.y, 0]} rotation={[0, 0, pos.heading]}>
-      <DetailedRobot position={[0, 0, 0]} alliance={s.alliance} accent={color} />
+      <DetailedRobot position={[0, 0, 0]} alliance={s.alliance} accent={color} carry={pos.carry} />
       <mesh position={[0, 0, 0.4]}>
         <ringGeometry args={[16, 18.5, 40]} />
         <meshBasicMaterial color={color} transparent opacity={0.45} side={THREE.DoubleSide} />
@@ -160,35 +259,139 @@ export function PlaythroughTrail({ slot = 0 }: { slot?: number }) {
   );
 }
 
+// Live FUEL effects: balls arc robot→HUB on scores (green flash +N on hit,
+// red flash + scattered balls on miss), cyan pulse on intake/feed, orange on jam.
+export function ShotBursts({ t, slot = 0 }: { t: number; slot?: number }) {
+  const { shots, pickups, hubX } = usePlaythrough(slot);
+  const els: ReactNode[] = [];
+  let k = 0;
+  for (const p of pickups) {
+    const dt = t - p.t;
+    if (dt < 0 || dt > 0.9) continue;
+    const f = dt / 0.9;
+    const col = p.jam ? '#fb923c' : '#22d3ee';
+    els.push(
+      <mesh key={`p${slot}-${k++}`} position={[p.x, p.y, 2]}>
+        <ringGeometry args={[14 + f * 22, 17 + f * 22, 32]} />
+        <meshBasicMaterial color={col} transparent opacity={0.7 * (1 - f)} side={THREE.DoubleSide} />
+      </mesh>
+    );
+    if (p.jam) {
+      els.push(
+        <Html key={`pj${slot}-${k++}`} position={[p.x, p.y, 34 + dt * 10]} center distanceFactor={420} style={{ pointerEvents: 'none' }} zIndexRange={[10, 0]}>
+          <div style={{ fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#000', background: '#fb923c', padding: '2px 8px', borderRadius: 9999, whiteSpace: 'nowrap' }}>JAM</div>
+        </Html>
+      );
+    }
+  }
+  for (const sh of shots) {
+    const dt = t - sh.t;
+    if (dt < 0 || dt > 1.7) continue;
+    // 3 balls, staggered, arcing to the HUB mouth (true FUEL size)
+    for (let i = 0; i < 3; i++) {
+      const p = (dt - i * 0.12) / 0.7;
+      if (p < 0) continue;
+      const fly = Math.min(p, 1);
+      const ex = sh.hit ? hubX : sh.x + (hubX - sh.x) * 0.62;
+      const ey = sh.hit ? (i - 1) * 4 : sh.y + (0 - sh.y) * 0.62 + (i - 1) * 7;
+      const x = sh.x + (ex - sh.x) * fly;
+      const y = sh.y + (ey - sh.y) * fly;
+      let z = 16 + (31 - 16) * fly + Math.sin(Math.PI * fly) * 15;
+      let sc = 1;
+      if (!sh.hit && p > 1) {
+        // miss: drop short of the HUB and shrink away
+        const d = Math.min((p - 1) / 0.5, 1);
+        z = 16 - d * 13;
+        sc = 1 - d * 0.85;
+      } else if (sh.hit && p > 1) {
+        sc = Math.max(0.01, 1 - (p - 1) * 2.2);
+      }
+      if (sc <= 0.02) continue;
+      els.push(
+        <mesh key={`b${slot}-${sh.t.toFixed(1)}-${i}`} position={[x, y, Math.max(z, 2.5)]} scale={sc}>
+          <sphereGeometry args={[2.95, 10, 10]} />
+          <meshStandardMaterial color="#f5c518" roughness={0.85} />
+        </mesh>
+      );
+    }
+    // impact flash + floating result
+    if (dt > 0.45) {
+      const f = Math.min((dt - 0.45) / 0.8, 1);
+      const fx = sh.hit ? hubX : sh.x + (hubX - sh.x) * 0.62;
+      const fy = sh.hit ? 0 : sh.y + (0 - sh.y) * 0.62;
+      els.push(
+        <mesh key={`f${slot}-${sh.t.toFixed(1)}`} position={[fx, fy, sh.hit ? 30 : 4]}>
+          <ringGeometry args={[8 + f * 26, 12 + f * 26, 32]} />
+          <meshBasicMaterial color={sh.hit ? '#7fee64' : '#ef4444'} transparent opacity={0.85 * (1 - f)} side={THREE.DoubleSide} />
+        </mesh>
+      );
+      els.push(
+        <Html key={`ft${slot}-${sh.t.toFixed(1)}`} position={[fx, fy, (sh.hit ? 44 : 22) + dt * 6]} center distanceFactor={420} style={{ pointerEvents: 'none' }} zIndexRange={[10, 0]}>
+          <div style={{ fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#000', background: sh.hit ? '#7fee64' : '#ef4444', padding: '2px 8px', borderRadius: 9999, whiteSpace: 'nowrap' }}>
+            {sh.hit ? `+${sh.fuel}` : 'MISS'}
+          </div>
+        </Html>
+      );
+    }
+  }
+  return <group>{els}</group>;
+}
+
+function Dot({ c }: { c: string }) {
+  return <span style={{ width: 8, height: 8, borderRadius: 9999, background: c, display: 'inline-block' }} />;
+}
+
 export function PlaythroughControls({ t, setT, playing, setPlaying, speed, setSpeed }: {
   t: number; setT: (v: number) => void; playing: boolean; setPlaying: (v: boolean) => void;
   speed: number; setSpeed: (v: number) => void;
 }) {
-  const { path, total, teleName } = usePlaythrough(0);
+  const { path, total, teleName, shots, windows } = usePlaythrough(0);
   const cur = path.reduce((acc, w, i) => (w.t <= t ? i : acc), 0);
   const curW = path[cur];
+  // transit points carry no label — show the most recent waypoint caption instead
+  let caption = curW?.label ?? '';
+  if (!caption) {
+    for (let i = cur; i >= 0; i--) {
+      if (path[i].label) { caption = path[i].label; break; }
+    }
+  }
+  const hubLive = isActiveAt(t, windows);
+  const phase = phaseAt(t);
+  const done = shots.filter((sh) => sh.t <= t);
+  const scored = done.filter((sh) => sh.hit).reduce((a, b) => a + b.fuel, 0);
+  const missed = done.filter((sh) => !sh.hit).length;
   return (
     <div className="absolute bottom-2 left-2 right-2 codewin p-2 flex flex-col gap-1.5 text-xs" style={{ backdropFilter: 'blur(6px)' }}>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="eyebrow">▶ Playthrough — {teleName}</span>
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${curW?.active ? 'bg-[#7fee64] text-black' : 'border border-[#485346] text-[#859984]'}`}>
-          {curW?.active ? 'HUB ACTIVE' : 'HUB OFF'}
+        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold border border-[#485346] text-[#859984] font-mono">
+          {phase} · {Math.max(0, MATCH_LEN - t).toFixed(0)}s left
         </span>
-        <span className="font-mono text-[#ddffdc]">{curW?.label}</span>
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${hubLive ? 'bg-[#7fee64] text-black' : 'border border-[#485346] text-[#859984]'}`}>
+          {hubLive ? 'HUB ACTIVE' : 'HUB OFF'}
+        </span>
+        <span className="font-mono text-[#ddffdc]">{caption}</span>
+        <span className="font-mono text-[11px]">
+          <span className="text-[#7fee64]">✓{scored}</span>
+          <span className="text-[#677d64]"> · </span>
+          <span className="text-[#ef4444]">✗{missed} miss</span>
+        </span>
         <span className="ml-auto" />
         <button className="btn-primary !py-1 !px-3 text-xs" onClick={() => (t >= total - 0.01 ? (setT(0), setPlaying(true)) : setPlaying(!playing))}>
-          {playing ? '⏸ Pause' : t > 0 && t < total - 0.01 ? '▶ Resume' : '▶ Play strategy'}
+          {playing ? '⏸ Pause' : t > 0 && t < total - 0.01 ? '▶ Resume' : '▶ Play match'}
         </button>
         <button className="btn-ghost !py-1 !px-3 text-xs" onClick={() => { setT(0); setPlaying(false); }}>↺</button>
-        {[1, 2, 4].map((v) => (
+        {[1, 2, 4, 8].map((v) => (
           <button key={v} onClick={() => setSpeed(v)} className={`px-2 py-1 rounded-full border text-[11px] ${speed === v ? 'bg-[#7fee64] text-black border-[#7fee64]' : 'border-[#485346] text-[#859984]'}`}>{v}×</button>
         ))}
       </div>
-      <input type="range" min={0} max={total} step={0.1} value={t} onChange={(e) => setT(+e.target.value)} />
-      <div className="flex justify-between font-mono text-[11px] text-[#677d64]">
-        <span>0s</span>
-        <span>collision-free A* path · times from motion model</span>
-        <span>{total.toFixed(0)}s</span>
+      <input type="range" min={0} max={total} step={0.5} value={t} onChange={(e) => setT(+e.target.value)} />
+      <div className="flex gap-3 font-mono text-[11px] text-[#677d64] flex-wrap">
+        <span className="flex items-center gap-1"><Dot c="#7fee64" /> scored</span>
+        <span className="flex items-center gap-1"><Dot c="#ef4444" /> miss</span>
+        <span className="flex items-center gap-1"><Dot c="#fb923c" /> jam</span>
+        <span className="flex items-center gap-1"><Dot c="#22d3ee" /> intake</span>
+        <span className="ml-auto">full match · AUTO 0–20 · TELEOP 20–160</span>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { useApp } from '../store';
 // Detailed + realistic single-team robot: procedural engineering model
 // (chassis, 4x swerve, bumpers, intake, shooter hood, climber) with PBR
 // materials. Optional user GLB import overrides procedural body.
-export function DetailedRobot({ position, alliance, accent = '#7fee64' }: { position: [number, number, number]; alliance: 'red' | 'blue'; accent?: string }) {
+export function DetailedRobot({ position, alliance, accent = '#7fee64', carry }: { position: [number, number, number]; alliance: 'red' | 'blue'; accent?: string; carry?: number }) {
   const s = useApp();
   const robot = s.robot();
   const fp = robot.footprintIn ?? { x: 29, y: 29 };
@@ -61,8 +61,8 @@ export function DetailedRobot({ position, alliance, accent = '#7fee64' }: { posi
               <mesh key={i} position={[0, y, 6]}><boxGeometry args={[1.6, 1.6, 12]} /><meshStandardMaterial color="#e5e7eb" metalness={0.9} roughness={0.25} /></mesh>
             ))}
           </group>
-          {/* FUEL in hopper (instanced look via few spheres) */}
-          <HopperFuel n={Math.min(8, Math.round((robot.storage ?? 14) / 2))} />
+          {/* FUEL in hopper — count follows playthrough load (collect fills, score empties) */}
+          <HopperFuel n={Math.min(8, Math.round((robot.storage ?? 14) / 2))} carry={carry} />
         </group>
       )}
       {/* team marker — 422 Mech Tech Dragons (used with permission) */}
@@ -78,11 +78,12 @@ export function DetailedRobot({ position, alliance, accent = '#7fee64' }: { posi
   );
 }
 
-function HopperFuel({ n }: { n: number }) {
+function HopperFuel({ n, carry }: { n: number; carry?: number }) {
   const items = useMemo(() => Array.from({ length: n }, (_, i) => ({ x: (i % 4) * 5 - 7.5, y: Math.floor(i / 4) * 5 - 2.5, z: 15 + (i % 2) * 3 })), [n]);
+  const shown = carry === undefined ? n : Math.max(0, Math.min(n, Math.round(carry * n)));
   return (
     <group>
-      {items.map((p, i) => (
+      {items.slice(0, shown).map((p, i) => (
         <mesh key={i} position={[p.x, p.y, p.z]}>
           <sphereGeometry args={[2.9, 12, 12]} />
           <meshStandardMaterial color="#facc15" roughness={0.95} />
