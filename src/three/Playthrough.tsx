@@ -5,30 +5,10 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useApp, allStrategies, allRobots } from '../store';
 import { isActiveAt, hubWindows } from '../sim/scoring';
-import { shotHit, jamThisCycle } from '../sim/shots';
-import { estimateSegment } from '../sim/motion';
-import { astar, clampOutOfColliders, fieldGridFromConstants } from '../sim/nav';
+import { buildPlaythrough, MATCH_LEN } from '../sim/playthrough';
 import { DetailedRobot } from './DetailedRobot';
 
-// Full-match clock: AUTO 0-20, TRANSITION 20-30, S1-S4 30-130, ENDGAME 130-160.
-// The playthrough visualizes the same model as the score panel, on real seconds.
-export const MATCH_LEN = 160;
-
-const PTS: Record<string, { x: number; y: number }> = {
-  neutralCenter: { x: 0, y: 0 }, hubScore: { x: -110, y: 20 },
-  depotApproach: { x: -280, y: 100 }, outpostApproach: { x: -270, y: -120 },
-  towerApproach: { x: -258, y: 0 }, start: { x: -230, y: -20 },
-  hubAdjacent: { x: -140, y: 20 }, shootZone: { x: -100, y: 60 },
-  reload: { x: -60, y: 40 }, neutral: { x: 0, y: 0 },
-  corral: { x: -260, y: -100 }, 'lane-block': { x: -60, y: -80 },
-  allianceZone: { x: -250, y: 0 },
-};
-
 export const SLOT_COLORS = ['#7fee64', '#22d3ee', '#f5c518'];
-// Per-slot anchor fan: robots aim at different patches of the same areas.
-const SLOT_ANCHOR = [{ x: 0, y: 0 }, { x: -18, y: -36 }, { x: 18, y: 36 }];
-// Lateral lane offset while traveling so trails don't paint over each other.
-const SLOT_OFFSET = [0, 16, -16];
 
 export function phaseAt(t: number): string {
   if (t < 20) return 'AUTO';
@@ -45,156 +25,26 @@ function robotSpecById(id: string) {
   return all.find((r) => r.id === id) ?? all[1];
 }
 
-type DensePt = { x: number; y: number; t: number; label: string; active: boolean; carry: number; hd: number };
-
+// Thin store wrapper around the pure match-clock builder in sim/playthrough.ts.
 export function usePlaythrough(slot = 0) {
   const s = useApp();
   return useMemo(() => {
     const ids = s.allianceMode ? s.allianceRobots : [s.robotId, s.robotId, s.robotId];
     const rid = ids[Math.min(slot, ids.length - 1)] ?? s.robotId;
     const robot = { ...robotSpecById(rid), ...((slot === 0 ? s.robotOverrides : {}) as object) };
-    const R: any = robot;
     const tele = allStrategies().find((x: any) => x.id === s.teleStrategyId) ?? allStrategies()[4];
-    const seq = ((tele as any).route?.length ? (tele as any).route : ['neutralCenter', 'hubScore'])
-      .map((n: string) => (n === 'hubScore' || n === 'shoot' || n === 'repeat' ? 'neutralCenter' : n));
-    const role = s.allianceMode ? s.allianceRoles[Math.min(slot, 2)] : 'scorer';
+    const seq = (tele as any).route?.length ? (tele as any).route : ['neutralCenter', 'hubScore'];
+    const rawRole = s.allianceMode ? s.allianceRoles[Math.min(slot, 2)] : 'scorer';
+    const role = ['scorer', 'support', 'climb', 'defense'].includes(rawRole) ? rawRole : 'scorer';
+    const built = buildPlaythrough({
+      robot, routeSeq: seq, alliance: s.alliance, autoWinner: s.autoWinner,
+      zone: s.zone, climbLevel: s.climbLevel, endgameId: s.endgameId,
+      congestion: s.congestion + (s.allianceMode ? 0.5 : 0), defense: s.defense,
+      origin: s.origin, gridIn: s.gridIn, slot, role,
+    });
     const windows = hubWindows(s.alliance, s.autoWinner);
-    const grid = fieldGridFromConstants(s.gridIn, 29);
-    const anchor = SLOT_ANCHOR[Math.min(slot, 2)] ?? { x: 0, y: 0 };
-    const lane = SLOT_OFFSET[Math.min(slot, 2)] ?? 0;
-    const at = (n: string) => {
-      const p = PTS[n] ?? PTS.neutralCenter;
-      const m = s.alliance === 'blue' ? { x: p.x, y: p.y } : { x: -p.x, y: -p.y };
-      return clampOutOfColliders({ x: m.x + anchor.x, y: m.y + anchor.y });
-    };
-    const hubX = s.alliance === 'blue' ? -167.01 : 167.01;
-    const acc = R.accuracy?.[s.zone] ?? 0.8;
-    const accClose = R.accuracy?.close ?? 0.85;
-    const intake = Math.max(R.intakeRatePerSec ?? 1.5, 0.2);
-    const release = Math.max(R.releaseRatePerSec ?? 1.8, 0.2);
-    const carryN = Math.min(R.storage ?? 14, 8 + Math.round(intake * 3));
-    const autoFuel = Math.round(8 * accClose);
-    const mp = {
-      vmaxInPerSec: R.vmaxInPerSec, amaxInPerSec2: R.amaxInPerSec2,
-      brakeInPerSec2: R.brakeInPerSec2, omegaDegPerSec: R.omegaDegPerSec,
-      turnAccelDegPerSec2: R.turnAccelDegPerSec2, batteryDerate: R.batteryDerate ?? 1,
-      congestionSec: s.congestion, defenseSec: s.defense, driverNoise: 0.06,
-      curvatureFactor: 0.12 + (1 - (R.maneuver ?? 0.75)) * 0.15,
-    };
-
-    const dense: DensePt[] = [];
-    const shots: { t: number; x: number; y: number; hit: boolean; fuel: number }[] = [];
-    const pickups: { t: number; x: number; y: number; jam: boolean }[] = [];
-    let t = 0;
-    let hd = 0;
-    let cursor = clampOutOfColliders({ x: s.origin.x + anchor.x, y: s.origin.y + anchor.y });
-
-    // Drive a leg with REAL motion-model seconds, distributed by distance.
-    const driveTo = (target: { x: number; y: number }, label: string, active: boolean, carry: number) => {
-      const leg = astar(cursor, target, grid);
-      const pts = leg.reachable && leg.points.length > 1 ? leg.points : [cursor, target];
-      const segLens = pts.map((p, k) => (k ? Math.hypot(p.x - pts[k - 1].x, p.y - pts[k - 1].y) : 0));
-      const totalLen = segLens.reduce((a, b) => a + b, 0);
-      const legT = totalLen < 1 ? 0.1 : estimateSegment(totalLen, 40, mp).realisticSec;
-      for (let k = 1; k < pts.length; k++) {
-        const p = pts[k];
-        const prev = pts[k - 1];
-        const dx = p.x - prev.x, dy = p.y - prev.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const isEnd = k === pts.length - 1;
-        const off = isEnd ? 0 : lane;
-        const safe = clampOutOfColliders({ x: p.x + (-dy / len) * off, y: p.y + (dx / len) * off });
-        hd = Math.atan2(safe.y - prev.y, safe.x - prev.x) || hd;
-        const dt = Math.max(0.05, legT * (segLens[k] / Math.max(totalLen, 0.001)));
-        t += dt;
-        dense.push({ x: safe.x, y: safe.y, t, label: isEnd ? label : '', active, carry, hd });
-      }
-      cursor = { x: target.x, y: target.y };
-    };
-    // Dwell in place (intake spin-up, shooting, holds, climb).
-    const dwell = (secs: number, label: string, active: boolean, carry: number) => {
-      if (secs <= 0.05) return;
-      t += secs;
-      dense.push({ x: cursor.x, y: cursor.y, t, label, active, carry, hd });
-    };
-    const nextActiveStart = (now: number) => {
-      for (const w of windows.active) if (w.start > now + 0.5) return w.start;
-      return -1;
-    };
-
-    dense.push({ x: cursor.x, y: cursor.y, t: 0, label: `R${slot + 1} Start — AUTO rollout`, active: true, carry: 0, hd: 0 });
-
-    // ---- AUTO 0-20: preloads to the (always active) HUB, then stage ----
-    const hubPt = at('hubScore');
-    driveTo(hubPt, '', true, 0);
-    if (t < 14) {
-      const st = t;
-      dwell(2.5, `R${slot + 1} AUTO score ✓`, true, 0);
-      if (st <= 19) shots.push({ t: st + 0.4, x: cursor.x, y: cursor.y, hit: hash01slot(slot, accClose), fuel: autoFuel });
-    }
-    const stage = at('neutralCenter');
-    if (t < 15) driveTo(stage, '', true, 0);
-    if (t < 20) dwell(20 - t, 'AUTO end — teleop soon', true, 0);
-
-    // ---- TELEOP 20-160 ----
-    const cutoff = s.endgameId === 'end-skip' ? 0 : s.endgameId === 'end-late' ? 12 : 30;
-    const cycles = Math.max(2, Math.min(7, Math.round((140 - cutoff - 6) / 20)));
-    const collectDwell = Math.min(carryN / intake * (1 + (R.intakeFail ?? 0.07) * 2), 9);
-    const scoreDwell = Math.min((R.spinUpSec ?? 0.6) + carryN / release, 7);
-    const wantsClimb = s.climbLevel > 0 && (slot === 0 || (s.allianceMode && (role === 'climb' || role === 'scorer')));
-    let c = 0;
-
-    for (; c < cycles; c++) {
-      if (t > 148) break;
-      if (role === 'climb' && c >= 2) break; // head for the tower early
-      if (role === 'support') {
-        driveTo(at('depotApproach'), `R${slot + 1} Collect ${c + 1}`, true, 0);
-        dwell(collectDwell * 0.7, '', true, 1);
-        driveTo(at('corral'), `R${slot + 1} Feed ${c + 1}`, true, 1);
-        dwell(2, '', true, 0);
-        if (t <= 159) pickups.push({ t, x: cursor.x, y: cursor.y, jam: false });
-        continue;
-      }
-      if (role === 'defense') {
-        driveTo(at(c % 2 ? 'neutralCenter' : 'lane-block'), `R${slot + 1} Patrol`, true, 0);
-        dwell(3, '', true, 0);
-        continue;
-      }
-      // scorer / climb-early: neutral collect → HUB score
-      const target = at(seq[c % seq.length] ?? 'neutralCenter');
-      driveTo(target, '', true, 0);
-      const jam = jamThisCycle(c, slot, R.jamProb ?? 0.02);
-      dwell(collectDwell * (jam ? 1.8 : 1), jam ? `R${slot + 1} JAM — clearing` : `R${slot + 1} Collect ${c + 1}`, true, 1);
-      if (t <= 159) pickups.push({ t, x: cursor.x, y: cursor.y, jam });
-      driveTo(at('hubScore'), '', true, 1);
-      if (!isActiveAt(t, windows)) {
-        const ns = nextActiveStart(t);
-        const holdT = ns < 0 ? 3 : Math.min(ns - t, 15);
-        dwell(holdT, `R${slot + 1} Hold — HUB off`, false, 1);
-      }
-      const hit = shotHit(c, slot, acc);
-      dwell(scoreDwell, `R${slot + 1} Score ${c + 1} ✓`, true, 0);
-      if (t <= 159.5) shots.push({ t: t - scoreDwell * 0.5, x: cursor.x, y: cursor.y, hit, fuel: hit ? carryN : 0 });
-    }
-
-    // ---- ENDGAME: climb or one last cycle ----
-    if (wantsClimb && s.climbLevel > 0) {
-      driveTo(at('towerApproach'), `R${slot + 1} Climb L${s.climbLevel}`, true, 0);
-      dwell(Math.min(R.climb?.setupSec ?? 8, 9), '', true, 0);
-    }
-    if (t < MATCH_LEN) dwell(MATCH_LEN - t, 'Match end', isActiveAt(MATCH_LEN - 0.5, windows), 0);
-
-    return {
-      path: dense, shots, pickups, hubX, windows, total: MATCH_LEN,
-      teleName: (tele as any).name, robotName: (robot as any).name,
-    };
+    return { ...built, windows, total: MATCH_LEN, teleName: (tele as any).name, robotName: (robot as any).name };
   }, [s.allianceMode, s.allianceRobots, s.allianceRoles, s.robotId, s.robotOverrides, s.teleStrategyId, s.alliance, s.autoWinner, s.zone, s.climbLevel, s.endgameId, s.congestion, s.defense, s.origin.x, s.origin.y, s.gridIn, slot]);
-}
-
-// Deterministic AUTO conversion (stable while scrubbing).
-function hash01slot(slot: number, acc: number): boolean {
-  const v = Math.sin(slot * 91.7 + 3.3) * 43758.5453;
-  return v - Math.floor(v) < acc;
 }
 
 export function PlaythroughRobot({ t, slot = 0 }: { t: number; slot?: number }) {
