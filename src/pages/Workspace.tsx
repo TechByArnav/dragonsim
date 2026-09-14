@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { useApp, allRobots, allStrategies } from '../store';
 import { FieldScene } from '../three/FieldScene';
 import { astar, fieldGridFromConstants } from '../sim/nav';
@@ -7,10 +7,12 @@ import { planStrategy } from '../sim/strategy';
 import { scoreMatch } from '../sim/scoring';
 import { runMonteCarlo } from '../sim/montecarlo';
 import { RobotsView } from './RobotsView';
-import { AnalyticsView } from './AnalyticsView';
 import { ContextView } from './ContextView';
 import { DocsView } from './DocsView';
 import { SavedView, SettingsView } from './SavedSettings';
+
+// Charts (recharts) load only when Analytics opens — keeps the 3D views light.
+const AnalyticsView = lazy(() => import('./AnalyticsView').then((m) => ({ default: m.AnalyticsView })));
 
 // Simplified rail: 5 primary actions + library group. Advanced pages still reachable.
 const RAIL_MAIN: { id: any; label: string; hint: string }[] = [
@@ -132,7 +134,11 @@ export function Workspace() {
           )}
           {s.view === 'robots' && <RobotsView />}
           {s.view === 'strategies' && <StrategiesPanel />}
-          {s.view === 'analytics' && <AnalyticsView sim={sim} />}
+          {s.view === 'analytics' && (
+            <Suspense fallback={<div className="p-6 font-mono text-sm text-[#ddffdc]">Loading charts…</div>}>
+              <AnalyticsView sim={sim} />
+            </Suspense>
+          )}
           {s.view === 'context' && <ContextView />}
           {s.view === 'docs' && <DocsView />}
           {s.view === 'saved' && <SavedView sim={sim} />}
