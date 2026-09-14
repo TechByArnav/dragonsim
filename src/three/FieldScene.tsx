@@ -6,6 +6,7 @@ import { useApp } from '../store';
 import { astar, clampOutOfColliders, fieldGridFromConstants } from '../sim/nav';
 import { computeHeatmapSync } from '../sim/heatmap';
 import { PlaythroughRobot, PlaythroughTrail, ShotBursts, PlaythroughControls, usePlaythrough } from './Playthrough';
+import { ErrorBoundary } from '../lib/ErrorBoundary';
 
 const L = 651.2, W = 317.7;
 const LIME = '#7fee64';
@@ -370,6 +371,7 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
 
   return (
     <div className="relative h-full w-full bg-black">
+      <ErrorBoundary title="The 3D view crashed (often the graphics chip) — score panel still works below">
       <Canvas
         key={`canvas-${s.quality}`}
         shadows={s.quality !== 'low'}
@@ -485,6 +487,7 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
         )}
         <OrbitControls makeDefault target={[0, 0, 0]} enablePan enableRotate enableZoom minDistance={110} maxDistance={1300} maxPolarAngle={Math.PI / 2 - 0.03} />
       </Canvas>
+      </ErrorBoundary>
       {/* camera presets — free orbit always on: drag = orbit, right-drag = pan, wheel = zoom */}
       <div className="absolute top-2 left-2 flex gap-1.5 text-xs flex-wrap max-w-[70%]">
         {[['persp', '3D'], ['top', 'Top'], ['side', 'Side'], ['end', 'End'], ['corner', 'Corner'], ['driverBlue', 'Blue DS'], ['driverRed', 'Red DS'], ['hub', 'HUB']].map(([id, label]) => (

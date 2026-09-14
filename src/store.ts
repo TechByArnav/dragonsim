@@ -39,6 +39,16 @@ export interface AppState {
   robot: () => any;
 }
 
+function defaultQuality(): 'low' | 'balanced' | 'high' {
+  try {
+    const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory;
+    if (mem !== undefined && mem <= 4) return 'low';
+    const cores = (navigator as unknown as { hardwareConcurrency?: number }).hardwareConcurrency;
+    if (cores !== undefined && cores <= 4) return 'low';
+  } catch { /* unknown device: stay balanced */ }
+  return 'balanced';
+}
+
 export const useApp = create<AppState>((set, get) => ({
   view: 'home',
   alliance: 'blue',
@@ -65,7 +75,7 @@ export const useApp = create<AppState>((set, get) => ({
   glbUrl: null,
   compareId: null,
   simpleMode: true,
-  quality: 'balanced',
+  quality: defaultQuality(),
   allianceMode: true,
   allianceRobots: ['allrounder', 'sprinter', 'climber'],
   allianceRoles: ['scorer', 'support', 'climb'],
