@@ -250,6 +250,8 @@ function HeatLayer() {
     (t2 as any).colorSpace = THREE.SRGBColorSpace;
     return t2;
   }, [s.heatmap, s.heatMode, s.origin.x, s.origin.y, s.robotId, s.gridIn]);
+  // Free the previous GPU texture whenever a new one is built.
+  useEffect(() => () => { tex?.dispose(); }, [tex]);
   if (!s.heatmap || !tex) return null;
   return (
     <mesh position={[0, 0, 0.18]}>
@@ -271,6 +273,7 @@ function PathLine() {
     if (!path) return null;
     return new THREE.BufferGeometry().setFromPoints(path.points.map((p) => new THREE.Vector3(p.x, p.y, 1.4)));
   }, [path]);
+  useEffect(() => () => { geom?.dispose(); }, [geom]);
   if (!path || !geom) return null;
   return (
     <>
@@ -288,6 +291,7 @@ function PathLine() {
 }
 
 function FuelPiles() {
+  const s = useApp();
   const piles = useMemo(() => {
     const rnd = (i: number, k: number) => {
       const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
@@ -311,11 +315,13 @@ function FuelPiles() {
     // positions applied via dummy Object3D below
   }, []);
   void ref;
+  // Low quality renders every 3rd ball: same look, 1/3 the instances.
+  const shown = s.quality === 'low' ? piles.filter((_, i) => i % 3 === 0) : piles;
   return (
-    <instancedMesh args={[undefined, undefined, piles.length]} position={[0, 0, 0]} castShadow>
+    <instancedMesh args={[undefined, undefined, shown.length]} position={[0, 0, 0]} castShadow={s.quality !== 'low'}>
       <sphereGeometry args={[2.95, 12, 12]} />
       <meshStandardMaterial color="#f5c518" roughness={0.85} metalness={0.02} />
-      {piles.map((p, i) => (
+      {shown.map((p, i) => (
         <object3D key={i} position={[p.x, p.y, p.z]} />
       ))}
     </instancedMesh>
@@ -364,13 +370,22 @@ export function FieldScene({ measure }: { measure: { a: { x: number; y: number }
 
   return (
     <div className="relative h-full w-full bg-black">
-      <Canvas shadows camera={{ position: [0, -380, 320], fov: 45, up: [0, 0, 1] }} dpr={[1, s.debug ? 1 : 2]}
+      <Canvas
+        key={`canvas-${s.quality}`}
+        shadows={s.quality !== 'low'}
+        camera={{ position: [0, -380, 320], fov: 45, up: [0, 0, 1] }}
+        dpr={s.quality === 'low' ? 1 : s.quality === 'balanced' ? [1, 1.5] : [1, 2]}
+        gl={{ antialias: s.quality !== 'low', powerPreference: 'default' }}
         onCreated={({ camera }) => { camera.up.set(0, 0, 1); camera.lookAt(0, 0, 0); }}>
         <color attach="background" args={['#000000']} />
         <fog attach="fog" args={['#000000', 900, 1600]} />
         <hemisphereLight args={['#ddffdc', '#0a0f0c', 0.5]} />
-        <ambientLight intensity={0.35} />
-        <directionalLight position={[180, -120, 280]} intensity={1.25} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-360} shadow-camera-right={360} shadow-camera-top={200} shadow-camera-bottom={-200} />
+        <ambientLight intensity={s.quality === 'low' ? 0.75 : 0.35} />
+        {s.quality !== 'low' && (
+          <directionalLight position={[180, -120, 280]} intensity={1.25} castShadow
+            shadow-mapSize={[s.quality === 'balanced' ? 1024 : 2048, s.quality === 'balanced' ? 1024 : 2048]}
+            shadow-camera-left={-360} shadow-camera-right={360} shadow-camera-top={200} shadow-camera-bottom={-200} />
+        )}
         <pointLight position={[-167, 0, 120]} intensity={s.alliance === 'blue' ? 60 : 8} color={LIME} distance={320} />
         <pointLight position={[167, 0, 120]} intensity={s.alliance === 'red' ? 60 : 8} color={LIME} distance={320} />
         <CameraRig preset={cam} />

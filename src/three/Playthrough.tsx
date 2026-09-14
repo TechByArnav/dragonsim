@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
@@ -101,6 +101,7 @@ export function PlaythroughTrail({ slot = 0 }: { slot?: number }) {
     if (path.length < 2) return null;
     return new THREE.BufferGeometry().setFromPoints(path.map((p) => new THREE.Vector3(p.x, p.y, 1.0)));
   }, [path]);
+  useEffect(() => () => { geom?.dispose(); }, [geom]);
   if (!geom) return null;
   return (
     <lineSegments geometry={geom}>

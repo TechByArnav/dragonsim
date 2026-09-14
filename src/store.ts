@@ -30,6 +30,7 @@ export interface AppState {
   glbUrl: string | null;
   compareId: string | null;
   simpleMode: boolean;
+  quality: 'low' | 'balanced' | 'high';
   allianceMode: boolean;
   allianceRobots: [string, string, string];
   allianceRoles: [string, string, string];
@@ -64,6 +65,7 @@ export const useApp = create<AppState>((set, get) => ({
   glbUrl: null,
   compareId: null,
   simpleMode: true,
+  quality: 'balanced',
   allianceMode: true,
   allianceRobots: ['allrounder', 'sprinter', 'climber'],
   allianceRoles: ['scorer', 'support', 'climb'],

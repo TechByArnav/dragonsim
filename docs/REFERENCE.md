@@ -40,6 +40,7 @@ come from the deterministic motion/path/scoring models plus seeded Monte Carlo
 | `gridIn` | inches | A* cell size (4–16; coarser = faster) |
 | `mcRuns` / `seed` | number | Monte Carlo runs + reproducibility seed |
 | `simpleMode` / `debug` / `labels` / `heatmap` / `heatMode` | flags | UI density + overlays |
+| `quality` | union | `low, balanced, high` graphics tier (dpr, shadows, ball count; Low for crash-prone laptops) |
 | `units` | union | `imperial` (canonical) / `metric` (display) |
 | `glbUrl` / `docsPage` | misc | optional robot model override; docs tab |
 

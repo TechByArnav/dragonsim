@@ -46,6 +46,18 @@ export function SettingsView() {
   return (
     <div className="p-4 grid md:grid-cols-2 gap-4 overflow-y-auto text-sm">
       <div className="panel p-3 space-y-2">
+        <div className="font-display font-bold">Graphics quality (frees memory on weak laptops)</div>
+        <div className="grid grid-cols-3 gap-1">
+          {(['low', 'balanced', 'high'] as const).map((q) => (
+            <button key={q} onClick={() => s.set({ quality: q })}
+              className={`py-1.5 rounded-lg border text-xs font-bold ${s.quality === q ? 'bg-[#7fee64] text-black border-[#7fee64]' : 'border-[#485346] text-[#859984]'}`}>
+              {q === 'low' ? 'Low' : q === 'balanced' ? 'Balanced' : 'High'}
+            </button>
+          ))}
+        </div>
+        <div className="text-[11px] text-zinc-500">Low: no shadows, fewer pixels + balls — use this if the tab ever crashes. Balanced is the default. Changing quality reloads the 3D view.</div>
+      </div>
+      <div className="panel p-3 space-y-2">
         <div className="font-display font-bold">Advanced coefficients (editable)</div>
         <label className="block text-xs">Grid resolution (in)<input type="number" value={s.gridIn} min={4} max={16} onChange={(e) => s.set({ gridIn: +e.target.value })} className="ml-2 w-20" /></label>
         <label className="block text-xs">Labels<input type="checkbox" checked={s.labels} onChange={(e) => s.set({ labels: e.target.checked })} className="ml-2" /></label>

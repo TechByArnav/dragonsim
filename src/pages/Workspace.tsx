@@ -180,6 +180,9 @@ function AdvancedToolbar() {
         <option value="congested">congested</option><option value="defended">defended</option>
       </select></label>
       <label className="flex items-center gap-1"><input type="checkbox" checked={s.debug} onChange={(e) => s.set({ debug: e.target.checked })} /> Debug</label>
+      <label>Quality<select value={s.quality} onChange={(e) => s.set({ quality: e.target.value as any })} className="ml-1">
+        <option value="low">low</option><option value="balanced">balanced</option><option value="high">high</option>
+      </select></label>
       <label>Units<select value={s.units} onChange={(e) => s.set({ units: e.target.value as any })} className="ml-1">
         <option value="imperial">in</option><option value="metric">metric</option>
       </select></label>
