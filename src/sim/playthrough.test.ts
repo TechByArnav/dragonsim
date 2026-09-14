@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPlaythrough, MATCH_LEN, MIN_STEP_IN } from './playthrough';
+import { buildPlaythrough, MATCH_LEN, MIN_STEP_IN, inAllianceZone, legalShotSpot } from './playthrough';
 import { colliderRects } from './nav';
 import { hubWindows, isActiveAt } from './scoring';
 import archetypes from '../../data/robots/archetypes.json';
@@ -8,7 +8,7 @@ const robots = (archetypes as any).archetypes;
 const sprinter = robots.find((r: any) => r.id === 'sprinter');
 const allrounder = robots.find((r: any) => r.id === 'allrounder');
 
-function opts(o: Record<string, unknown> = {}) {
+function opts(o: { role?: string } & Record<string, unknown> = {}) {
   return {
     robot: sprinter,
     routeSeq: ['neutralCenter', 'hubScore'],
@@ -88,5 +88,36 @@ describe('playthrough builder invariants', () => {
     const b = buildPlaythrough(opts());
     expect(a.shots).toEqual(b.shots);
     expect(a.path.length).toBe(b.path.length);
+  });
+
+  it('G407: every release happens inside the shooter alliance zone', () => {
+    for (const alliance of ['blue', 'red'] as const) {
+      for (let slot = 0; slot < 3; slot++) {
+        const r = buildPlaythrough(opts({
+          alliance, slot,
+          origin: alliance === 'blue' ? { x: -230, y: -20 } : { x: 230, y: 20 },
+        }));
+        expect(r.shots.length).toBeGreaterThan(0);
+        for (const sh of r.shots) {
+          expect(inAllianceZone({ x: sh.x, y: sh.y }, alliance)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('G407: mid-field attempts reroute to the alliance-side apron', () => {
+    // neutral middle is illegal for both alliances
+    expect(inAllianceZone({ x: 0, y: 0 }, 'blue')).toBe(false);
+    expect(inAllianceZone({ x: 0, y: 0 }, 'red')).toBe(false);
+    const blue = legalShotSpot({ x: 0, y: 0 }, 'blue', 0);
+    expect(blue.moved).toBe(true);
+    expect(inAllianceZone(blue.p, 'blue')).toBe(true);
+    const red = legalShotSpot({ x: 0, y: 0 }, 'red', 2);
+    expect(red.moved).toBe(true);
+    expect(inAllianceZone(red.p, 'red')).toBe(true);
+    expect(red.p.x).toBeGreaterThan(0);
+    // already-legal spots pass through untouched
+    const ok = legalShotSpot({ x: -185, y: 55 }, 'blue', 0);
+    expect(ok.moved).toBe(false);
   });
 });

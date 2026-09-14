@@ -63,5 +63,14 @@
     "L3": "BUMPERS completely above MID RUNG (45in)",
     "contact": "must contact RUNG and/or UPRIGHT; may additionally contact TOWER WALL, support, FUEL, another ROBOT",
     "source": "manual-6.5.2"
+  },
+  "shootingPolicy": {
+    "rule": "G407",
+    "title": "Only score while in your ALLIANCE ZONE",
+    "requirement": "A ROBOT may not launch a SCORING ELEMENT into their HUB unless their BUMPERS are partially or fully within their ALLIANCE ZONE.",
+    "violation": "MAJOR FOUL per launch",
+    "escalation": "G211: intentionally scoring a large quantity of FUEL into the HUB from the NEUTRAL ZONE risks YELLOW/RED CARD.",
+    "encoding": "Shot origin must satisfy blue x <= -153.01 / red x >= +153.01 (ROBOT STARTING LINE at ±167.01 with ~14 in bumper-partial tolerance). Deeper attempts drive to the alliance-side HUB apron first, costing real travel time.",
+    "source": "manual-7.4.2-G407 TU22"
   }
 }

@@ -1,11 +1,19 @@
 import { useApp } from '../store';
+import { Markdown } from '../lib/markdown';
+import guide from '../../docs/USER-GUIDE.md?raw';
 
 const FEATURES = [
   { t: '3D Field Analysis', d: 'Dimensionally grounded REBUILT field (651.2×317.7 in), HUB/BUMP/TRENCH/TOWER/DEPOT/OUTPOST with inspectable coordinates, debug collision volumes, and measure tool.' },
   { t: 'Robot Archetypes + Prototype Models', d: '6 editable archetypes plus single-team placeholder. Detailed procedural robot + optional GLB import. Every number carries source/confidence.' },
   { t: 'Cycle-Time & Path Planning', d: 'Trapezoidal motion (never d/vmax), A* around obstacles, click-to-time, travel-time heatmaps in 6 modes.' },
-  { t: 'Single-Robot Strategy', d: 'AUTO + TELEOP + Endgame presets with active-HUB gating. Inactive-HUB attempts score 0 and show lost time. Alliance sim deferred by design.' },
+  { t: 'Alliance Strategy (3 robots)', d: 'Scorer/support/climb/defense roles with active-HUB gating. Inactive-HUB attempts score 0 and show lost time. Full-match 160 s playthroughs with ball flights.' },
   { t: 'Heatmaps & Scoring Forecasts', d: 'Best/expected/conservative ranges, seeded Monte Carlo distributions, sensitivity, RP progress (100/360/50) — never guarantees.' },
+];
+
+const DOC_CARDS = [
+  { id: 'components', t: 'Components deep-dive', d: 'Field, robots, motion, pathfinding, scoring math, playthrough, uncertainty — every core piece explained.' },
+  { id: 'reference', t: 'APIs, variables, knobs', d: 'No remote calls, no AI calls. Every data file, state variable, and tuning knob in one table.' },
+  { id: 'architecture', t: 'Architecture & files', d: 'What every file does, how data flows, where the tests live, how builds deploy.' },
 ];
 
 export function Home() {
@@ -65,6 +73,22 @@ export function Home() {
               <div className="text-sm text-zinc-300 mt-1">{f.d}</div>
             </div>
           ))}
+          <div className="panel p-4 md:col-span-3">
+            <div className="font-display font-bold text-lg">Documentation</div>
+            <div className="grid md:grid-cols-3 gap-3 mt-2">
+              {DOC_CARDS.map((c) => (
+                <button key={c.id} onClick={() => set({ view: 'docs', docsPage: c.id })} className="text-left panel p-3 hover:border-[#7fee64] transition">
+                  <div className="font-display font-bold text-[#ddffdc]">{c.t}</div>
+                  <div className="text-sm mt-1">{c.d}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="panel p-5 md:col-span-3">
+            <div className="eyebrow">Start here · one page</div>
+            <Markdown text={guide} />
+            <button className="btn-primary mt-3" onClick={() => set({ view: 'simulate' })}>Open Simulator</button>
+          </div>
           <div className="panel p-4 md:col-span-3">
             <div className="font-display font-bold text-lg">Data Sources</div>
             <ul className="text-sm text-zinc-300 list-disc ml-5 mt-1">

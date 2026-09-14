@@ -53,6 +53,13 @@ Kinematic (not dynamic) sim; defense = penalty slider; HUB-exit scatter uniform;
 ## Data / privacy
 Local-only: IndexedDB + localStorage + file export. No telemetry, no backend, no keys.
 
+## Documentation
+
+- `docs/USER-GUIDE.md` — one page: what DragonSim does + the 5-minute flow (also on the homepage and in-app under Docs).
+- `docs/COMPONENTS.md` — each core component in detail, including why the score is an estimate and exactly how it is calculated.
+- `docs/REFERENCE.md` — API calls (none), LLM calls (none), data schemas, state variables, tuning knobs.
+- `docs/ARCHITECTURE.md` — every file, what it does, data flow, tests, deploy.
+
 ## Project structure
 ```
 data/field|rules|robots|strategies|context|scenarios|exports

@@ -17,6 +17,27 @@ export const MATCH_LEN = 160;
 export const MIN_STEP_IN = 2.5;
 export const MIN_LEG_IN = 24;
 
+export const ALLIANCE_LINE_IN = 167.01; // ROBOT STARTING LINE |x|
+export const BUMPER_TOL_IN = 14; // bumper-partially-inside allowance (~half footprint)
+
+// G407: launch position is legal only with BUMPERS partially/fully inside
+// the shooter's own ALLIANCE ZONE (MAJOR FOUL per launch otherwise).
+export function inAllianceZone(p: { x: number; y: number }, alliance: 'red' | 'blue'): boolean {
+  return alliance === 'blue' ? p.x <= -ALLIANCE_LINE_IN + BUMPER_TOL_IN : p.x >= ALLIANCE_LINE_IN - BUMPER_TOL_IN;
+}
+
+// Alliance-side HUB aprons: legal, collision-free, close-range release spots.
+const SHOT_APRONS: Record<'red' | 'blue', { x: number; y: number }[]> = {
+  blue: [{ x: -185, y: 55 }, { x: -185, y: -55 }, { x: -215, y: 0 }],
+  red: [{ x: 185, y: 55 }, { x: 185, y: -55 }, { x: 215, y: 0 }],
+};
+
+export function legalShotSpot(from: { x: number; y: number }, alliance: 'red' | 'blue', slot: number) {
+  if (inAllianceZone(from, alliance)) return { p: from, moved: false };
+  const a = SHOT_APRONS[alliance][Math.min(Math.max(slot, 0), 2) % 3];
+  return { p: clampOutOfColliders(a), moved: true };
+}
+
 export interface DensePt { x: number; y: number; t: number; label: string; active: boolean; carry: number; hd: number }
 export interface ShotEvt { t: number; x: number; y: number; hit: boolean; fuel: number }
 export interface PickupEvt { t: number; x: number; y: number; jam: boolean }
@@ -70,7 +91,13 @@ export function buildPlaythrough(o: PlayOpts): PlayResult {
     const m = o.alliance === 'blue' ? { x: p.x, y: p.y } : { x: -p.x, y: -p.y };
     return clampOutOfColliders({ x: m.x + anchor.x, y: m.y + anchor.y });
   };
-  const hubX = o.alliance === 'blue' ? -167.01 : 167.01;
+    const hubX = o.alliance === 'blue' ? -167.01 : 167.01;
+    // Scoring releases happen at this slot's alliance-side apron (G407-legal
+    // by construction); anything else routes through legalShotSpot below.
+    const hubApron = () => {
+      const a = SHOT_APRONS[o.alliance][slot % 3];
+      return clampOutOfColliders({ x: a.x, y: a.y });
+    };
   const acc = R.accuracy?.[o.zone] ?? 0.8;
   const accClose = R.accuracy?.close ?? 0.85;
   const intake = Math.max(R.intakeRatePerSec ?? 1.5, 0.2);
@@ -148,7 +175,9 @@ export function buildPlaythrough(o: PlayOpts): PlayResult {
   dense.push({ x: cursor.x, y: cursor.y, t: 0, label: `${tag} Start — AUTO rollout`, active: true, carry: 0, hd: 0 });
 
   // ---- AUTO 0-20: preloads to the (always active) HUB, then stage ----
-  driveTo(at('hubScore'), '', true, 0);
+  // G407: releases require BUMPERS in the ALLIANCE ZONE, so scoring runs
+  // stage on this slot's alliance-side apron, never mid-field.
+  driveTo(hubApron(), '', true, 0);
   if (t < 14) {
     const arrT = t;
     dwell(2.5, `${tag} AUTO score ✓`, true, 0);
@@ -171,7 +200,13 @@ export function buildPlaythrough(o: PlayOpts): PlayResult {
     const arrT = t;
     dwell(collectDwell * (jam ? 1.8 : 1), jam ? `${tag} JAM — clearing` : `${tag} Collect ${idx + 1}`, true, 1);
     if (arrT <= 159) pickups.push({ t: arrT, x: cursor.x, y: cursor.y, jam });
-    driveTo(at('hubScore'), '', true, 1);
+    driveTo(hubApron(), '', true, 1);
+    {
+      // Backstop: any release outside the ALLIANCE ZONE is a G407 MAJOR
+      // FOUL, so reroute to the apron (visible Reposition leg, real time).
+      const spot = legalShotSpot(cursor, o.alliance, slot);
+      if (spot.moved) driveTo(spot.p, `${tag} Reposition — G407 zone`, isActiveAt(t, windows), 1);
+    }
     // Wait out inactive windows (re-check after capped holds — never shoot while off).
     let guard = 0;
     while (!isActiveAt(t, windows) && guard++ < 3) {

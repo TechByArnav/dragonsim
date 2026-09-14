@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import archetypes from '../data/robots/archetypes.json';
 import presets from '../data/strategies/presets.json';
 
-export type View = 'home' | 'field' | 'robots' | 'strategies' | 'simulate' | 'analytics' | 'context' | 'saved' | 'settings';
+export type View = 'home' | 'field' | 'robots' | 'strategies' | 'simulate' | 'analytics' | 'context' | 'saved' | 'settings' | 'docs';
 export interface RobotCfg { id: string; [k: string]: unknown }
 export interface AppState {
   view: View;
@@ -33,6 +33,7 @@ export interface AppState {
   allianceMode: boolean;
   allianceRobots: [string, string, string];
   allianceRoles: [string, string, string];
+  docsPage: string;
   set: (p: Partial<AppState>) => void;
   robot: () => any;
 }
@@ -66,6 +67,7 @@ export const useApp = create<AppState>((set, get) => ({
   allianceMode: true,
   allianceRobots: ['allrounder', 'sprinter', 'climber'],
   allianceRoles: ['scorer', 'support', 'climb'],
+  docsPage: 'guide',
   set: (p) => set(p),
   robot: () => {
     const base = (archetypes as any).archetypes.find((r: any) => r.id === get().robotId) ?? (archetypes as any).archetypes[1];

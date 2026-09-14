@@ -9,6 +9,7 @@ import { runMonteCarlo } from '../sim/montecarlo';
 import { RobotsView } from './RobotsView';
 import { AnalyticsView } from './AnalyticsView';
 import { ContextView } from './ContextView';
+import { DocsView } from './DocsView';
 import { SavedView, SettingsView } from './SavedSettings';
 
 // Simplified rail: 5 primary actions + library group. Advanced pages still reachable.
@@ -20,6 +21,7 @@ const RAIL_MAIN: { id: any; label: string; hint: string }[] = [
   { id: 'field', label: '🏟 Field', hint: 'explore 3D' },
 ];
 const RAIL_MORE: { id: any; label: string }[] = [
+  { id: 'docs', label: 'Docs' },
   { id: 'context', label: 'Library' },
   { id: 'saved', label: 'Saved' },
   { id: 'settings', label: 'Settings' },
@@ -27,7 +29,7 @@ const RAIL_MORE: { id: any; label: string }[] = [
 
 const DEST_PRESETS: { label: string; x: number; y: number }[] = [
   { label: 'Neutral pile', x: 0, y: 0 },
-  { label: 'My HUB', x: -110, y: 20 },
+  { label: 'My HUB apron', x: -185, y: 55 },
   { label: 'Depot', x: -280, y: 100 },
   { label: 'Outpost', x: -270, y: -120 },
 ];
@@ -132,6 +134,7 @@ export function Workspace() {
           {s.view === 'strategies' && <StrategiesPanel />}
           {s.view === 'analytics' && <AnalyticsView sim={sim} />}
           {s.view === 'context' && <ContextView />}
+          {s.view === 'docs' && <DocsView />}
           {s.view === 'saved' && <SavedView sim={sim} />}
           {s.view === 'settings' && <SettingsView />}
           {s.view === 'home' && <div className="p-6 text-sm">Use Home in rail to return.</div>}
@@ -148,8 +151,8 @@ function SimpleToolbar() {
     <div className="flex gap-2 px-3 py-2 text-xs border-b border-white/10 flex-wrap items-center">
       <span className="text-zinc-400">👆 Click field to move robot · Drive to:</span>
       {DEST_PRESETS.map((d) => {
-        const mineHub = s.alliance === 'blue' ? { x: -110, y: 20 } : { x: 110, y: -20 };
-        const pos = d.label === 'My HUB' ? mineHub : { x: d.x, y: d.y };
+        const mineHub = s.alliance === 'blue' ? { x: -185, y: 55 } : { x: 185, y: 55 };
+        const pos = d.label === 'My HUB apron' ? mineHub : { x: d.x, y: d.y };
         const active = s.dest && Math.abs(s.dest.x - pos.x) < 4 && Math.abs(s.dest.y - pos.y) < 4;
         return (
           <button key={d.label} onClick={() => s.set({ dest: pos })}
@@ -330,6 +333,7 @@ function SimControls() {
       </label>
       <label>Traffic +{s.congestion.toFixed(1)}s <input type="range" min={0} max={4} step={0.1} value={s.congestion} onChange={(e) => s.set({ congestion: +e.target.value })} /></label>
       <label>Defense +{s.defense.toFixed(1)}s <input type="range" min={0} max={6} step={0.1} value={s.defense} onChange={(e) => s.set({ defense: +e.target.value })} /></label>
+      <div className="text-[11px] text-zinc-500">G407 enforced: launches only from the ALLIANCE ZONE (MAJOR FOUL otherwise). Deep attempts reroute via a Reposition leg.</div>
       <label>Endgame
         <select value={s.endgameId} onChange={(e) => s.set({ endgameId: e.target.value })}>
           <option value="end-early">Climb early</option><option value="end-late">Last cycle + climb</option><option value="end-skip">Skip climb</option>
